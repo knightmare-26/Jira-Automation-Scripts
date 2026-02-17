@@ -1,0 +1,223 @@
+2026-02-11 16:20:08,743 [INFO] Starting create_versions run projects=['AURO'] versions=['test.124']
+2026-02-11 16:20:08,743 [INFO] Fetching versions for project AURO
+2026-02-11 16:20:09,525 [INFO] Fetched 79 existing versions for project AURO
+2026-02-11 16:20:09,525 [INFO] AURO: version test.124 already exists; skipping create
+2026-02-11 16:20:09,525 [INFO] Completed create_versions run
+2026-02-12 21:33:23,094 [INFO] Starting release_versions run projects=['AL', 'TLS', 'ANDRO', 'CALC', 'CAS', 'CM', 'COS', 'PECP', 'EP', 'GLX', 'GEM', 'GRAV', 'CND', 'LYRA', 'NOVA', 'TITAN', 'VEGA', 'DPM', 'DWIZ'] versions=['2025TrainC1', '2025Train1', '2024Train4', '2024Train5']
+2026-02-12 21:33:23,094 [INFO] Fetching versions for project AL
+2026-02-12 21:33:24,488 [INFO] Fetched 135 versions for project AL
+2026-02-12 21:33:24,489 [INFO] AL: releasing 2025Train1
+2026-02-12 21:33:24,489 [INFO] Releasing version 2025Train1 in project AL
+2026-02-12 21:33:25,978 [INFO] Successfully released version 2025Train1 in project AL
+2026-02-12 21:33:25,980 [INFO] Fetching versions for project TLS
+2026-02-12 21:33:26,632 [INFO] Fetched 39 versions for project TLS
+2026-02-12 21:33:26,633 [INFO] TLS: releasing 2025Train1
+2026-02-12 21:33:26,633 [INFO] Releasing version 2025Train1 in project TLS
+2026-02-12 21:33:28,143 [INFO] Successfully released version 2025Train1 in project TLS
+2026-02-12 21:33:28,143 [INFO] Fetching versions for project ANDRO
+2026-02-12 21:33:28,829 [INFO] Fetched 159 versions for project ANDRO
+2026-02-12 21:33:28,831 [INFO] ANDRO: releasing 2025TrainC1
+2026-02-12 21:33:28,831 [INFO] Releasing version 2025TrainC1 in project ANDRO
+2026-02-12 21:33:30,299 [INFO] Successfully released version 2025TrainC1 in project ANDRO
+2026-02-12 21:33:30,300 [INFO] ANDRO: releasing 2025Train1
+2026-02-12 21:33:30,300 [INFO] Releasing version 2025Train1 in project ANDRO
+2026-02-12 21:33:31,714 [INFO] Successfully released version 2025Train1 in project ANDRO
+2026-02-12 21:33:31,715 [INFO] Fetching versions for project CALC
+2026-02-12 21:33:32,304 [INFO] Fetched 23 versions for project CALC
+2026-02-12 21:33:32,304 [INFO] CALC: releasing 2024Train4
+2026-02-12 21:33:32,304 [INFO] Releasing version 2024Train4 in project CALC
+2026-02-12 21:33:33,806 [INFO] Successfully released version 2024Train4 in project CALC
+2026-02-12 21:33:33,806 [INFO] CALC: releasing 2024Train5
+2026-02-12 21:33:33,806 [INFO] Releasing version 2024Train5 in project CALC
+2026-02-12 21:33:34,565 [INFO] Successfully released version 2024Train5 in project CALC
+2026-02-12 21:33:34,566 [INFO] CALC: releasing 2025TrainC1
+2026-02-12 21:33:34,566 [INFO] Releasing version 2025TrainC1 in project CALC
+2026-02-12 21:33:35,329 [INFO] Successfully released version 2025TrainC1 in project CALC
+2026-02-12 21:33:35,330 [INFO] CALC: releasing 2025Train1
+2026-02-12 21:33:35,330 [INFO] Releasing version 2025Train1 in project CALC
+2026-02-12 21:33:36,318 [INFO] Successfully released version 2025Train1 in project CALC
+2026-02-12 21:33:36,319 [INFO] Fetching versions for project CAS
+2026-02-12 21:33:37,000 [INFO] Fetched 99 versions for project CAS
+2026-02-12 21:33:37,000 [INFO] CAS: releasing 2025Train1
+2026-02-12 21:33:37,001 [INFO] Releasing version 2025Train1 in project CAS
+2026-02-12 21:33:37,767 [INFO] Successfully released version 2025Train1 in project CAS
+2026-02-12 21:33:37,768 [INFO] Fetching versions for project CM
+2026-02-12 21:33:39,072 [INFO] Fetched 53 versions for project CM
+2026-02-12 21:33:39,073 [INFO] CM: releasing 2025Train1
+2026-02-12 21:33:39,073 [INFO] Releasing version 2025Train1 in project CM
+2026-02-12 21:33:39,788 [INFO] Successfully released version 2025Train1 in project CM
+2026-02-12 21:33:39,789 [INFO] Fetching versions for project COS
+2026-02-12 21:33:40,442 [INFO] Fetched 102 versions for project COS
+2026-02-12 21:33:40,442 [INFO] Fetching versions for project PECP
+2026-02-12 21:33:41,710 [INFO] Fetched 125 versions for project PECP
+2026-02-12 21:33:41,711 [INFO] PECP: releasing 2025Train1
+2026-02-12 21:33:41,711 [INFO] Releasing version 2025Train1 in project PECP
+2026-02-12 21:33:42,454 [INFO] Successfully released version 2025Train1 in project PECP
+2026-02-12 21:33:42,455 [INFO] Fetching versions for project EP
+2026-02-12 21:33:43,884 [INFO] Fetched 101 versions for project EP
+2026-02-12 21:33:43,884 [INFO] EP: releasing 2025Train1
+2026-02-12 21:33:43,884 [INFO] Releasing version 2025Train1 in project EP
+2026-02-12 21:33:45,298 [INFO] Successfully released version 2025Train1 in project EP
+2026-02-12 21:33:45,298 [INFO] Fetching versions for project GLX
+2026-02-12 21:33:46,645 [INFO] Fetched 213 versions for project GLX
+2026-02-12 21:33:46,646 [INFO] GLX: releasing 2025Train1
+2026-02-12 21:33:46,646 [INFO] Releasing version 2025Train1 in project GLX
+2026-02-12 21:33:48,443 [INFO] Successfully released version 2025Train1 in project GLX
+2026-02-12 21:33:48,443 [INFO] GLX: releasing 2025TrainC1
+2026-02-12 21:33:48,443 [INFO] Releasing version 2025TrainC1 in project GLX
+2026-02-12 21:33:49,854 [INFO] Successfully released version 2025TrainC1 in project GLX
+2026-02-12 21:33:49,856 [INFO] Fetching versions for project GEM
+2026-02-12 21:33:50,459 [INFO] Fetched 51 versions for project GEM
+2026-02-12 21:33:50,459 [INFO] GEM: releasing 2025Train1
+2026-02-12 21:33:50,460 [INFO] Releasing version 2025Train1 in project GEM
+2026-02-12 21:33:51,234 [INFO] Successfully released version 2025Train1 in project GEM
+2026-02-12 21:33:51,234 [INFO] Fetching versions for project GRAV
+2026-02-12 21:33:51,805 [INFO] Fetched 20 versions for project GRAV
+2026-02-12 21:33:51,806 [INFO] GRAV: releasing 2025Train1
+2026-02-12 21:33:51,806 [INFO] Releasing version 2025Train1 in project GRAV
+2026-02-12 21:33:53,202 [INFO] Successfully released version 2025Train1 in project GRAV
+2026-02-12 21:33:53,203 [INFO] Fetching versions for project CND
+2026-02-12 21:33:53,884 [INFO] Fetched 70 versions for project CND
+2026-02-12 21:33:53,885 [INFO] Fetching versions for project LYRA
+2026-02-12 21:33:54,506 [INFO] Fetched 111 versions for project LYRA
+2026-02-12 21:33:54,506 [INFO] Fetching versions for project NOVA
+2026-02-12 21:33:55,129 [INFO] Fetched 118 versions for project NOVA
+2026-02-12 21:33:55,130 [INFO] Fetching versions for project TITAN
+2026-02-12 21:33:56,408 [INFO] Fetched 205 versions for project TITAN
+2026-02-12 21:33:56,409 [INFO] TITAN: releasing 2025Train1
+2026-02-12 21:33:56,409 [INFO] Releasing version 2025Train1 in project TITAN
+2026-02-12 21:33:57,712 [INFO] Successfully released version 2025Train1 in project TITAN
+2026-02-12 21:33:57,712 [INFO] Fetching versions for project VEGA
+2026-02-12 21:33:58,313 [INFO] Fetched 174 versions for project VEGA
+2026-02-12 21:33:58,313 [INFO] VEGA: releasing 2025Train1
+2026-02-12 21:33:58,313 [INFO] Releasing version 2025Train1 in project VEGA
+2026-02-12 21:33:58,975 [INFO] Successfully released version 2025Train1 in project VEGA
+2026-02-12 21:33:58,975 [INFO] VEGA: releasing 2025TrainC1
+2026-02-12 21:33:58,975 [INFO] Releasing version 2025TrainC1 in project VEGA
+2026-02-12 21:33:59,541 [INFO] Successfully released version 2025TrainC1 in project VEGA
+2026-02-12 21:33:59,542 [INFO] Fetching versions for project DPM
+2026-02-12 21:34:00,127 [INFO] Fetched 141 versions for project DPM
+2026-02-12 21:34:00,128 [INFO] DPM: releasing 2024Train4
+2026-02-12 21:34:00,128 [INFO] Releasing version 2024Train4 in project DPM
+2026-02-12 21:34:00,829 [INFO] Successfully released version 2024Train4 in project DPM
+2026-02-12 21:34:00,830 [INFO] DPM: releasing 2024Train5
+2026-02-12 21:34:00,831 [INFO] Releasing version 2024Train5 in project DPM
+2026-02-12 21:34:01,557 [INFO] Successfully released version 2024Train5 in project DPM
+2026-02-12 21:34:01,557 [INFO] DPM: releasing 2025Train1
+2026-02-12 21:34:01,557 [INFO] Releasing version 2025Train1 in project DPM
+2026-02-12 21:34:02,238 [INFO] Successfully released version 2025Train1 in project DPM
+2026-02-12 21:34:02,240 [INFO] Fetching versions for project DWIZ
+2026-02-12 21:34:03,539 [INFO] Fetched 17 versions for project DWIZ
+2026-02-12 21:34:03,540 [INFO] Completed release_versions run
+2026-02-12 21:34:30,370 [INFO] Starting archive_versions run projects=['AL', 'TLS', 'ANDRO', 'CALC', 'CAS', 'CM', 'COS', 'PECP', 'EP', 'GLX', 'GEM', 'GRAV', 'CND', 'LYRA', 'NOVA', 'TITAN', 'VEGA', 'DPM', 'DWIZ'] versions=['2025TrainC1', '2025Train1', '2024Train4', '2024Train5']
+2026-02-12 21:34:30,370 [INFO] Fetching versions for project AL
+2026-02-12 21:34:31,087 [INFO] Fetched 135 versions for project AL
+2026-02-12 21:34:31,088 [INFO] AL: archiving 2025Train1
+2026-02-12 21:34:31,089 [INFO] Archiving version 2025Train1 in project AL
+2026-02-12 21:34:32,666 [INFO] Successfully archived version 2025Train1 in project AL
+2026-02-12 21:34:32,667 [INFO] Fetching versions for project TLS
+2026-02-12 21:34:33,972 [INFO] Fetched 39 versions for project TLS
+2026-02-12 21:34:33,973 [INFO] TLS: archiving 2025Train1
+2026-02-12 21:34:33,973 [INFO] Archiving version 2025Train1 in project TLS
+2026-02-12 21:34:34,691 [INFO] Successfully archived version 2025Train1 in project TLS
+2026-02-12 21:34:34,692 [INFO] Fetching versions for project ANDRO
+2026-02-12 21:34:35,313 [INFO] Fetched 159 versions for project ANDRO
+2026-02-12 21:34:35,313 [INFO] ANDRO: archiving 2025TrainC1
+2026-02-12 21:34:35,313 [INFO] Archiving version 2025TrainC1 in project ANDRO
+2026-02-12 21:34:36,934 [INFO] Successfully archived version 2025TrainC1 in project ANDRO
+2026-02-12 21:34:36,935 [INFO] ANDRO: archiving 2025Train1
+2026-02-12 21:34:36,935 [INFO] Archiving version 2025Train1 in project ANDRO
+2026-02-12 21:34:37,733 [INFO] Successfully archived version 2025Train1 in project ANDRO
+2026-02-12 21:34:37,734 [INFO] Fetching versions for project CALC
+2026-02-12 21:34:38,313 [INFO] Fetched 23 versions for project CALC
+2026-02-12 21:34:38,314 [INFO] CALC: archiving 2024Train4
+2026-02-12 21:34:38,314 [INFO] Archiving version 2024Train4 in project CALC
+2026-02-12 21:34:39,029 [INFO] Successfully archived version 2024Train4 in project CALC
+2026-02-12 21:34:39,029 [INFO] CALC: archiving 2024Train5
+2026-02-12 21:34:39,030 [INFO] Archiving version 2024Train5 in project CALC
+2026-02-12 21:34:40,170 [INFO] Successfully archived version 2024Train5 in project CALC
+2026-02-12 21:34:40,170 [INFO] CALC: archiving 2025TrainC1
+2026-02-12 21:34:40,170 [INFO] Archiving version 2025TrainC1 in project CALC
+2026-02-12 21:34:40,915 [INFO] Successfully archived version 2025TrainC1 in project CALC
+2026-02-12 21:34:40,915 [INFO] CALC: archiving 2025Train1
+2026-02-12 21:34:40,916 [INFO] Archiving version 2025Train1 in project CALC
+2026-02-12 21:34:41,636 [INFO] Successfully archived version 2025Train1 in project CALC
+2026-02-12 21:34:41,636 [INFO] Fetching versions for project CAS
+2026-02-12 21:34:42,268 [INFO] Fetched 99 versions for project CAS
+2026-02-12 21:34:42,269 [INFO] CAS: archiving 2025Train1
+2026-02-12 21:34:42,269 [INFO] Archiving version 2025Train1 in project CAS
+2026-02-12 21:34:42,936 [INFO] Successfully archived version 2025Train1 in project CAS
+2026-02-12 21:34:42,937 [INFO] Fetching versions for project CM
+2026-02-12 21:34:43,517 [INFO] Fetched 53 versions for project CM
+2026-02-12 21:34:43,518 [INFO] CM: archiving 2025Train1
+2026-02-12 21:34:43,518 [INFO] Archiving version 2025Train1 in project CM
+2026-02-12 21:34:44,168 [INFO] Successfully archived version 2025Train1 in project CM
+2026-02-12 21:34:44,169 [INFO] Fetching versions for project COS
+2026-02-12 21:34:44,768 [INFO] Fetched 102 versions for project COS
+2026-02-12 21:34:44,769 [INFO] COS: archiving 2025Train1
+2026-02-12 21:34:44,769 [INFO] Archiving version 2025Train1 in project COS
+2026-02-12 21:34:45,481 [INFO] Successfully archived version 2025Train1 in project COS
+2026-02-12 21:34:45,481 [INFO] Fetching versions for project PECP
+2026-02-12 21:34:46,427 [INFO] Fetched 125 versions for project PECP
+2026-02-12 21:34:46,428 [INFO] PECP: archiving 2025Train1
+2026-02-12 21:34:46,428 [INFO] Archiving version 2025Train1 in project PECP
+2026-02-12 21:34:47,258 [INFO] Successfully archived version 2025Train1 in project PECP
+2026-02-12 21:34:47,259 [INFO] Fetching versions for project EP
+2026-02-12 21:34:48,283 [INFO] Fetched 101 versions for project EP
+2026-02-12 21:34:48,285 [INFO] EP: archiving 2025Train1
+2026-02-12 21:34:48,285 [INFO] Archiving version 2025Train1 in project EP
+2026-02-12 21:34:49,131 [INFO] Successfully archived version 2025Train1 in project EP
+2026-02-12 21:34:49,132 [INFO] Fetching versions for project GLX
+2026-02-12 21:34:49,714 [INFO] Fetched 213 versions for project GLX
+2026-02-12 21:34:49,715 [INFO] GLX: archiving 2025Train1
+2026-02-12 21:34:49,715 [INFO] Archiving version 2025Train1 in project GLX
+2026-02-12 21:34:50,500 [INFO] Successfully archived version 2025Train1 in project GLX
+2026-02-12 21:34:50,501 [INFO] GLX: archiving 2025TrainC1
+2026-02-12 21:34:50,501 [INFO] Archiving version 2025TrainC1 in project GLX
+2026-02-12 21:34:51,185 [INFO] Successfully archived version 2025TrainC1 in project GLX
+2026-02-12 21:34:51,186 [INFO] Fetching versions for project GEM
+2026-02-12 21:34:52,055 [INFO] Fetched 51 versions for project GEM
+2026-02-12 21:34:52,056 [INFO] GEM: archiving 2025Train1
+2026-02-12 21:34:52,057 [INFO] Archiving version 2025Train1 in project GEM
+2026-02-12 21:34:52,731 [INFO] Successfully archived version 2025Train1 in project GEM
+2026-02-12 21:34:52,732 [INFO] Fetching versions for project GRAV
+2026-02-12 21:34:53,369 [INFO] Fetched 20 versions for project GRAV
+2026-02-12 21:34:53,369 [INFO] GRAV: archiving 2025Train1
+2026-02-12 21:34:53,369 [INFO] Archiving version 2025Train1 in project GRAV
+2026-02-12 21:34:54,422 [INFO] Successfully archived version 2025Train1 in project GRAV
+2026-02-12 21:34:54,423 [INFO] Fetching versions for project CND
+2026-02-12 21:34:55,248 [INFO] Fetched 70 versions for project CND
+2026-02-12 21:34:55,249 [INFO] CND: archiving 2025Train1
+2026-02-12 21:34:55,249 [INFO] Archiving version 2025Train1 in project CND
+2026-02-12 21:34:55,959 [INFO] Successfully archived version 2025Train1 in project CND
+2026-02-12 21:34:55,959 [INFO] Fetching versions for project LYRA
+2026-02-12 21:34:56,582 [INFO] Fetched 111 versions for project LYRA
+2026-02-12 21:34:56,582 [INFO] Fetching versions for project NOVA
+2026-02-12 21:34:57,690 [INFO] Fetched 118 versions for project NOVA
+2026-02-12 21:34:57,691 [INFO] Fetching versions for project TITAN
+2026-02-12 21:34:58,369 [INFO] Fetched 205 versions for project TITAN
+2026-02-12 21:34:58,370 [INFO] TITAN: archiving 2025Train1
+2026-02-12 21:34:58,370 [INFO] Archiving version 2025Train1 in project TITAN
+2026-02-12 21:35:00,009 [INFO] Successfully archived version 2025Train1 in project TITAN
+2026-02-12 21:35:00,012 [INFO] Fetching versions for project VEGA
+2026-02-12 21:35:00,623 [INFO] Fetched 174 versions for project VEGA
+2026-02-12 21:35:00,624 [INFO] VEGA: archiving 2025Train1
+2026-02-12 21:35:00,624 [INFO] Archiving version 2025Train1 in project VEGA
+2026-02-12 21:35:01,318 [INFO] Successfully archived version 2025Train1 in project VEGA
+2026-02-12 21:35:01,319 [INFO] VEGA: archiving 2025TrainC1
+2026-02-12 21:35:01,319 [INFO] Archiving version 2025TrainC1 in project VEGA
+2026-02-12 21:35:02,061 [INFO] Successfully archived version 2025TrainC1 in project VEGA
+2026-02-12 21:35:02,062 [INFO] Fetching versions for project DPM
+2026-02-12 21:35:03,031 [INFO] Fetched 141 versions for project DPM
+2026-02-12 21:35:03,032 [INFO] DPM: archiving 2024Train4
+2026-02-12 21:35:03,032 [INFO] Archiving version 2024Train4 in project DPM
+2026-02-12 21:35:03,764 [INFO] Successfully archived version 2024Train4 in project DPM
+2026-02-12 21:35:03,765 [INFO] DPM: archiving 2024Train5
+2026-02-12 21:35:03,765 [INFO] Archiving version 2024Train5 in project DPM
+2026-02-12 21:35:04,514 [INFO] Successfully archived version 2024Train5 in project DPM
+2026-02-12 21:35:04,515 [INFO] DPM: archiving 2025Train1
+2026-02-12 21:35:04,515 [INFO] Archiving version 2025Train1 in project DPM
+2026-02-12 21:35:05,530 [INFO] Successfully archived version 2025Train1 in project DPM
+2026-02-12 21:35:05,531 [INFO] Fetching versions for project DWIZ
+2026-02-12 21:35:06,140 [INFO] Fetched 17 versions for project DWIZ
+2026-02-12 21:35:06,141 [INFO] Completed archive_versions run
