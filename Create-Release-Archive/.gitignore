@@ -1,0 +1,5 @@
+*.log
+jira_automation_runs.log
+.env
+__pycache__/
+.DS_Store

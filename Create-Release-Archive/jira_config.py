@@ -1,8 +1,10 @@
+import os
 import sys
 
-JIRA_BASE_URL = "https://your-domain.atlassian.net"
-JIRA_EMAIL = "your-email@example.com"
-JIRA_API_TOKEN = "REDACTED_JIRA_TOKEN"
+# Read credentials from environment variables to avoid committing secrets.
+JIRA_BASE_URL = os.getenv("JIRA_BASE_URL")
+JIRA_EMAIL = os.getenv("JIRA_EMAIL")
+JIRA_API_TOKEN = os.getenv("JIRA_API_TOKEN")
 
 if not all([JIRA_BASE_URL, JIRA_EMAIL, JIRA_API_TOKEN]):
     sys.exit("Missing env vars: JIRA_BASE_URL, JIRA_EMAIL, JIRA_API_TOKEN")
