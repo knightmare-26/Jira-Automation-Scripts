@@ -4,8 +4,8 @@ from jira_config import API_BASE, AUTH, HEADERS
 
 # ======================
 # EDIT THESE
-PROJECTS = ["AURO"]
-VERSIONS = ["test.124"]
+PROJECTS = ["ABC"]
+VERSIONS = ["2026Train123"]
 # ======================
 
 
