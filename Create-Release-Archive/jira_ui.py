@@ -288,7 +288,7 @@ def main():
                 target_versions = st.multiselect(
                     "Select Versions to Modify",
                     options=available_versions,
-                    default=valid_defaults
+                    key="version_multiselect"
                 )
             
             st.session_state.selected_versions = target_versions
