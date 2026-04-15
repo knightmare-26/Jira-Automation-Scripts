@@ -3,7 +3,7 @@ import jira_utils
 
 # ======================
 # EDIT THESE
-PROJECTS = ["AL", "TLS", "ANDRO", "CALC", "CAS", "CM", "COS", "PECP", "EP", "GLX", "GEM", "GRAV", "CND", "LYRA", "NOVA", "TITAN", "VEGA", "DPM", "DWIZ"]
+PROJECTS = ["AL", "TLS", "ANDRO", "CALC", "CAS", "CM", "COS", "PECP", "EP", "GLX", "GEM", "GRAV", "CND", "LYRA", "NOVA", "TITAN", "VEGA", "DPM", "DWIZ", "PRODE"]
 VERSIONS = ["2025TrainC1", "2025Train1", "2024Train4", "2024Train5"]
 # ======================
 
