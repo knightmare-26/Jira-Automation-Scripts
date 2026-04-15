@@ -4,3 +4,4 @@ jira_automation_runs.log
 __pycache__/
 .DS_Store
 jira_config_local.py
+local_shortcuts.json
