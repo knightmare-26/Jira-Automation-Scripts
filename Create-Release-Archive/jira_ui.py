@@ -243,6 +243,10 @@ def main():
             new_versions_raw = st.text_input("Enter Version Names (comma separated)", placeholder="e.g. 2026Train1, 2026Train2")
             final_versions = [v.strip() for v in new_versions_raw.split(",") if v.strip()]
 
+            col_date1, col_date2 = st.columns(2)
+            start_date = col_date1.date_input("Start Date (Optional)", value=None)
+            end_date = col_date2.date_input("Release Date (Optional)", value=None)
+
             if final_versions:
                 st.write(f"**Planned Versions:** {', '.join(final_versions)}")
                 st.session_state.selected_versions = final_versions
@@ -252,6 +256,9 @@ def main():
                 if not final_versions:
                     st.error("Please define at least one version name.")
                 else:
+                    start_date_str = start_date.isoformat() if start_date else None
+                    end_date_str = end_date.isoformat() if end_date else None
+                    
                     for p in current_selection:
                         with st.status(f"Processing {p}...", expanded=True) as status:
                             existing_versions_list = get_versions_cached(p)
@@ -260,12 +267,13 @@ def main():
                                 if v in existing_names:
                                     st.info(f"{p}: {v} already exists.")
                                 else:
-                                    if jira_utils.create_version(p, v):
+                                    if jira_utils.create_version(p, v, start_date=start_date_str, release_date=end_date_str):
                                         st.success(f"{p}: Created {v}")
                                         st.cache_data.clear()
                                     else:
                                         st.error(f"{p}: Failed to create {v}")
                             status.update(label=f"Finished {p}", state="complete")
+                    st.success("🎉 All versions created successfully across selected projects!")
 
     elif page == "📦 Release/Archive":
         st.title("📦 Release & Archive Versions")
@@ -276,27 +284,39 @@ def main():
         else:
             st.write(f"**Active Workspace:** {', '.join(current_selection)}")
 
-            st.header("1. Select Target Versions")
-            with st.spinner("Loading versions..."):
-                available_versions = get_versions_for_projects_cached(current_selection)
+            st.header("1. Select Fix Versions")
+            # 1. Version filtering options
+            show_released_only = st.checkbox("Show only Released versions (not yet archived)")
             
-            if not available_versions:
-                st.info("No versions found for the selected projects.")
-                target_versions = []
-            else:
-                valid_defaults = [v for v in st.session_state.selected_versions if v in available_versions]
-                target_versions = st.multiselect(
-                    "Select Versions to Modify",
-                    options=available_versions,
-                    key="version_multiselect"
-                )
+            # Fetch versions and filter
+            with st.spinner("Loading versions..."):
+                all_v_list = get_versions_for_projects_cached(current_selection)
+                # Fetch full data to check status
+                all_v_details = []
+                for p in current_selection:
+                    all_v_details.extend(jira_utils.get_versions(p))
+                
+                if show_released_only:
+                    # Filter: Released=True, Archived=False
+                    available_versions = [v['name'] for v in all_v_details if v.get("released") and not v.get("archived")]
+                else:
+                    # Filter: Released=False AND Archived=False
+                    available_versions = [v['name'] for v in all_v_details if not v.get("released") and not v.get("archived")]
+                
+                available_versions = sorted(list(set(available_versions)))
+            
+            target_versions = st.multiselect(
+                "Fix Versions",
+                options=available_versions,
+                key="version_multiselect"
+            )
             
             st.session_state.selected_versions = target_versions
 
             if target_versions:
                 st.divider()
                 st.header("2. Actions")
-                st.write(f"Targeting: **{', '.join(target_versions)}**")
+                st.write(f"Selected Fix Versions: **{', '.join(target_versions)}**")
                 st.warning("These actions will be applied to all selected versions across all active projects.")
                 
                 rel_col, arc_col = st.columns(2)
@@ -319,6 +339,7 @@ def main():
                                 else:
                                     st.warning(f"{p}: Version {v_name} not found.")
                             status.update(label=f"Completed {p}", state="complete")
+                    st.success("🎉 All selected versions released successfully!")
 
                 if arc_col.button("📦 Archive Versions", use_container_width=True):
                     for p in current_selection:
@@ -338,6 +359,7 @@ def main():
                                 else:
                                     st.warning(f"{p}: Version {v_name} not found.")
                             status.update(label=f"Completed {p}", state="complete")
+                    st.success("🎉 All selected versions archived successfully!")
 
 if __name__ == "__main__":
     main()
