@@ -1,11 +1,8 @@
-# Local configuration for JIRA Automation
-# Rename this file to jira_config_local.py and fill in your details.
+# JIRA Configuration Overrides
+# ------------------------------
+# Copy this file to jira_config_local.py and update with your credentials.
+# Do NOT commit jira_config_local.py to version control.
 
-# The base URL of your Atlassian instance (e.g., https://company.atlassian.net)
 JIRA_BASE_URL = "https://your-domain.atlassian.net"
-
-# Your JIRA account email address
 JIRA_EMAIL = "your-email@company.com"
-
-# Your JIRA API Token. Generate one at: https://id.atlassian.com/manage-profile/security/api-tokens
-JIRA_API_TOKEN = "your-atlassian-api-token"
+JIRA_API_TOKEN = "your-jira-api-token"
