@@ -5,12 +5,32 @@ import jira_config
 import os
 import logging
 import json
+import streamlit_authenticator as stauth
+import yaml
+from yaml.loader import SafeLoader
+from supabase import create_client, Client
 
-# Import the predefined projects list
-try:
-    from release_versions import PROJECTS as DEV_PROJECTS
-except ImportError:
-    DEV_PROJECTS = []
+# Supabase Config (These should ideally be in secrets/config)
+SUPABASE_URL = st.secrets.get("SUPABASE_URL", "")
+SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", "")
+
+# Initialize Supabase client
+supabase: Client = None
+if SUPABASE_URL and SUPABASE_KEY:
+    try:
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+    except Exception as e:
+        st.error(f"Failed to connect to Supabase: {e}")
+
+# UI Constants
+PAGE_TITLE = "Jira Version Manager"
+st.set_page_config(page_title=PAGE_TITLE, layout="wide", initial_sidebar_state="expanded")
+
+def get_user_projects_file(username):
+    return f"{username}_managed_projects.json"
+
+def get_user_shortcuts_file(username):
+    return f"{username}_local_shortcuts.json"
 
 # Logging configuration
 logging.basicConfig(
@@ -24,55 +44,118 @@ file_handler.setFormatter(
 )
 logger.addHandler(file_handler)
 
-# UI Constants
-PAGE_TITLE = "Jira Version Manager"
-st.set_page_config(page_title=PAGE_TITLE, layout="wide", initial_sidebar_state="expanded")
-
-SHORTCUTS_FILE = "local_shortcuts.json"
-
-def load_shortcuts():
-    default_shortcuts = {"Dev Projects": {"projects": DEV_PROJECTS, "versions": []}}
-    if os.path.exists(SHORTCUTS_FILE):
+def load_managed_projects(username):
+    # Try Supabase first
+    if supabase:
         try:
-            with open(SHORTCUTS_FILE, "r") as f:
-                data = json.load(f)
-                if "Dev Projects" not in data:
-                    data["Dev Projects"] = default_shortcuts["Dev Projects"]
-                return data
+            response = supabase.table("user_settings").select("managed_projects").eq("username", username).execute()
+            if response.data:
+                return response.data[0].get("managed_projects", [])
         except Exception as e:
-            logger.error(f"Error loading shortcuts: {e}")
-            return default_shortcuts
-    return default_shortcuts
+            logger.error(f"Supabase load error for {username}: {e}")
 
-def save_shortcut(name, projects, versions):
-    shortcuts = load_shortcuts()
-    shortcuts[name] = {"projects": projects, "versions": versions}
+    # Fallback to local file
+    filename = get_user_projects_file(username)
+    if os.path.exists(filename):
+        try:
+            with open(filename, "r") as f:
+                return json.load(f)
+        except Exception as e:
+            logger.error(f"Error loading managed projects for {username}: {e}")
+    return []
+
+def save_managed_projects(username, projects):
+    # Save to Supabase first
+    if supabase:
+        try:
+            supabase.table("user_settings").upsert({
+                "username": username,
+                "managed_projects": projects
+            }).execute()
+            return True # Success in cloud
+        except Exception as e:
+            logger.error(f"Supabase save error for {username}: {e}")
+
+    # Fallback: Save to local file
+    filename = get_user_projects_file(username)
     try:
-        with open(SHORTCUTS_FILE, "w") as f:
+        with open(filename, "w") as f:
+            json.dump(projects, f, indent=4)
+        return True
+    except Exception as e:
+        logger.error(f"Error saving managed projects locally for {username}: {e}")
+        return False
+
+def load_shortcuts(username):
+    # Try Supabase first
+    if supabase:
+        try:
+            response = supabase.table("user_settings").select("shortcuts").eq("username", username).execute()
+            if response.data:
+                return response.data[0].get("shortcuts", {})
+        except Exception as e:
+            logger.error(f"Supabase load shortcuts error for {username}: {e}")
+
+    # Fallback to local file
+    filename = get_user_shortcuts_file(username)
+    if os.path.exists(filename):
+        try:
+            with open(filename, "r") as f:
+                return json.load(f)
+        except Exception as e:
+            logger.error(f"Error loading shortcuts for {username}: {e}")
+    return {}
+
+def save_shortcuts(username, shortcuts):
+    # Save to Supabase first
+    if supabase:
+        try:
+            supabase.table("user_settings").upsert({
+                "username": username,
+                "shortcuts": shortcuts
+            }).execute()
+        except Exception as e:
+            logger.error(f"Supabase save shortcuts error for {username}: {e}")
+
+    # Always save to local file as backup
+    filename = get_user_shortcuts_file(username)
+    try:
+        with open(filename, "w") as f:
             json.dump(shortcuts, f, indent=4)
         return True
     except Exception as e:
-        logger.error(f"Error saving shortcut: {e}")
+        logger.error(f"Error saving shortcuts for {username}: {e}")
         return False
 
-def delete_shortcut(name):
-    if name == "Dev Projects":
-        return False
-    shortcuts = load_shortcuts()
+def save_shortcut(username, name, projects, versions):
+    shortcuts = load_shortcuts(username)
+    shortcuts[name] = {"projects": projects, "versions": versions}
+    return save_shortcuts(username, shortcuts)
+
+def delete_shortcut(username, name):
+    shortcuts = load_shortcuts(username)
     if name in shortcuts:
         del shortcuts[name]
-        with open(SHORTCUTS_FILE, "w") as f:
-            json.dump(shortcuts, f, indent=4)
-        return True
+        return save_shortcuts(username, shortcuts)
     return False
 
 @st.cache_data(ttl=3600)
-def get_all_projects_cached():
-    projects = jira_utils.get_projects()
-    if not projects:
+def get_all_jira_projects_cached():
+    """Fetches ALL projects from Jira API."""
+    return jira_utils.get_projects()
+
+@st.cache_data(ttl=3600)
+def get_managed_projects_cached(username):
+    """Returns only projects that are in the user's managed list."""
+    all_projects = get_all_jira_projects_cached()
+    managed_keys = load_managed_projects(username)
+    if not all_projects:
         return []
-    if DEV_PROJECTS:
-        projects = [p for p in projects if p.get('key') in DEV_PROJECTS]
+    if managed_keys:
+        projects = [p for p in all_projects if p.get('key') in managed_keys]
+    else:
+        # If no managed projects file, show all projects initially
+        projects = all_projects
     return sorted(projects, key=lambda x: x.get('key', ''))
 
 @st.cache_data(ttl=600)
@@ -96,11 +179,116 @@ JIRA_API_TOKEN = "{token}"
 """
     with open("jira_config_local.py", "w") as f:
         f.write(config_content)
+    
+    st.cache_data.clear()
     st.success("Configuration saved! Re-loading...")
 
+def save_users_config(config):
+    # Save to local file
+    try:
+        with open('users.yaml', 'w') as file:
+            yaml.dump(config, file, default_flow_style=False)
+    except Exception as e:
+        logger.error(f"Error saving users config locally: {e}")
+        return False
+    
+    # Save to Supabase for cloud persistence
+    if supabase:
+        try:
+            # We store the entire config as one record for easy syncing
+            supabase.table("app_config").upsert({
+                "id": "users_config",
+                "content": config
+            }).execute()
+        except Exception as e:
+            logger.error(f"Error syncing users to cloud: {e}")
+    return True
+
 def main():
+    # --- Authentication Setup & Cloud Sync ---
+    # 1. Check if we should pull from cloud first
+    if supabase:
+        try:
+            response = supabase.table("app_config").select("content").eq("id", "users_config").execute()
+            if response.data:
+                cloud_config = response.data[0].get("content")
+                with open('users.yaml', 'w') as file:
+                    yaml.dump(cloud_config, file, default_flow_style=False)
+        except Exception as e:
+            logger.error(f"Cloud config pull failed: {e}")
+
+    if not os.path.exists('users.yaml'):
+        initial_config = {
+            'credentials': {'usernames': {}},
+            'cookie': {'expiry_days': 30, 'key': 'some_signature_key', 'name': 'jira_manager_cookie'},
+            'preauthorized': {'emails': []}
+        }
+        save_users_config(initial_config)
+
+    with open('users.yaml') as file:
+        config = yaml.load(file, Loader=SafeLoader)
+
+    authenticator = stauth.Authenticate(
+        config['credentials'],
+        config['cookie']['name'],
+        config['cookie']['key'],
+        config['cookie']['expiry_days']
+    )
+
+    # --- Login/Sign Up Logic ---
+    if st.session_state.get("authentication_status") != True:
+        tab_login, tab_signup = st.tabs(["🔐 Login", "📝 Sign Up"])
+        
+        with tab_login:
+            # The latest version of streamlit-authenticator uses location as the first arg or keyword
+            try:
+                authenticator.login(location='main')
+            except Exception as e:
+                st.error(f"Login widget error: {e}")
+
+            if st.session_state.get("authentication_status") == False:
+                st.error('Username/password is incorrect')
+            elif st.session_state.get("authentication_status") == None:
+                st.info("Please log in to continue.")
+
+        with tab_signup:
+            try:
+                # Customizing fields to hide "Name" if possible, or just keep it simple.
+                # In many versions, you can pass a dictionary to define labels or presence.
+                # If we can't hide "Name", we'll at least label it clearly.
+                if authenticator.register_user(location='main'):
+                    st.success('User registered successfully! You can now log in.')
+                    
+                    # After registration, the 'config' dictionary is updated by the library.
+                    # We ensure 'name' isn't empty if the user skipped it (though usually it's required)
+                    save_users_config(config) 
+            except Exception as e:
+                if "Must contain Name" in str(e):
+                    st.error("Please ensure all fields are filled out correctly.")
+                else:
+                    st.error(f"Registration failed: {e}")
+        
+        if st.session_state.get("authentication_status") != True:
+            return
+
+    # --- Authenticated App ---
+    name = st.session_state["name"]
+    username = st.session_state["username"]
+    
+    st.sidebar.title(f"Welcome {name}")
+    authenticator.logout('Logout', location='sidebar')
+
+    # --- Global Config Check ---
+    # We check if the connection to Jira is configured
+    is_config_valid = all([jira_config.JIRA_BASE_URL, jira_config.JIRA_EMAIL, jira_config.JIRA_API_TOKEN])
+    
+    if not is_config_valid:
+        st.warning("⚠️ **Action Required:** Jira configuration is incomplete. Please set up your credentials below.")
+        st.session_state.current_page = "⚙️ Config"
+
     # --- Shared Data ---
-    all_projects = get_all_projects_cached()
+    # Only try to fetch projects if config is valid
+    all_projects = get_managed_projects_cached(username) if is_config_valid else []
     project_keys = [p['key'] for p in all_projects]
 
     # Initialize session state for selections
@@ -108,16 +296,28 @@ def main():
         st.session_state.current_page = "📂 Manage Projects"
     if 'selected_projects' not in st.session_state:
         st.session_state.selected_projects = set()
-        for k in project_keys:
-            st.session_state[f"cb_{k}"] = False
+    
+    # Ensure session state checkboxes are synced with current selections
+    for k in project_keys:
+        if f"cb_{k}" not in st.session_state:
+            st.session_state[f"cb_{k}"] = k in st.session_state.selected_projects
+
     if 'selected_versions' not in st.session_state:
         st.session_state.selected_versions = []
 
-    # --- Sidebar Navigation & Shortcuts ---
+    # --- Sidebar Navigation ---
     st.sidebar.title("🎯 Jira Manager")
-    nav_options = ["📂 Manage Projects", "🚀 Create Versions", "📦 Release/Archive", "⚙️ Config"]
     
-    # Use index to control the radio button programmatically
+    # Define available pages based on config status
+    if is_config_valid:
+        nav_options = ["📂 Manage Projects", "🚀 Create Versions", "📦 Release/Archive", "⚙️ Config"]
+    else:
+        nav_options = ["⚙️ Config"]
+    
+    # Ensure current_page is valid for nav_options
+    if st.session_state.current_page not in nav_options:
+        st.session_state.current_page = nav_options[0]
+
     try:
         current_index = nav_options.index(st.session_state.current_page)
     except ValueError:
@@ -131,23 +331,24 @@ def main():
         st.rerun()
 
     st.sidebar.divider()
-    st.sidebar.header("Quick Shortcuts")
-    shortcuts = load_shortcuts()
-    for name, data in shortcuts.items():
-        col1, col2 = st.sidebar.columns([4, 1])
-        if col1.button(f"📍 {name}", key=f"apply_{name}", use_container_width=True):
-            new_proj_list = data.get("projects", [])
-            st.session_state.selected_projects = set(new_proj_list)
-            st.session_state.selected_versions = data.get("versions", [])
-            # Sync individual checkbox states in session_state
-            for k in project_keys:
-                st.session_state[f"cb_{k}"] = k in st.session_state.selected_projects
-            # Stay on current page or go to dashboard? Dashboard is safer for new selections
-            st.session_state.current_page = "📂 Manage Projects"
-            st.rerun()
-        if name != "Dev Projects":
-            if col2.button("🗑️", key=f"del_{name}"):
-                if delete_shortcut(name):
+    
+    # Only show shortcuts and projects-related logic if config is valid
+    if is_config_valid:
+        st.sidebar.header("Quick Shortcuts")
+        shortcuts = load_shortcuts(username)
+        for s_name, data in shortcuts.items():
+            col1, col2 = st.sidebar.columns([4, 1])
+            if col1.button(f"📍 {s_name}", key=f"apply_{s_name}", use_container_width=True):
+                new_proj_list = data.get("projects", [])
+                st.session_state.selected_projects = set(new_proj_list)
+                st.session_state.selected_versions = data.get("versions", [])
+                # Sync individual checkbox states in session_state
+                for k in project_keys:
+                    st.session_state[f"cb_{k}"] = k in st.session_state.selected_projects
+                st.session_state.current_page = "📂 Manage Projects"
+                st.rerun()
+            if col2.button("🗑️", key=f"del_{s_name}"):
+                if delete_shortcut(username, s_name):
                     st.rerun()
 
     # --- Page Content ---
@@ -161,62 +362,158 @@ def main():
             save_config(url, email, token)
             st.rerun()
 
+        st.divider()
+        st.subheader("📤 Sharing the Application")
+        st.write("To share this application:")
+        st.markdown("""
+        1. **Share the URL:** Provide the link to this web application to other users.
+        2. **Account Creation:** Users can click the **Sign Up** tab on the login screen to create their own secure account.
+        3. **Configuration:** After logging in, users should enter their own Jira details in this **Config** tab. Settings are saved privately to each account!
+        """)
+
     elif page == "📂 Manage Projects":
         st.title("📂 Manage Projects")
         
-        # Project Selection Section
-        st.header("📂 Manage Projects")
-        st.info("Select projects to define your active workspace.")
-        
-        col_ctrl1, col_ctrl2, _ = st.columns([1, 1, 4])
-        if col_ctrl1.button("Select All Projects", use_container_width=True):
-            st.session_state.selected_projects = set(project_keys)
-            for k in project_keys:
-                st.session_state[f"cb_{k}"] = True
-            st.rerun()
-        if col_ctrl2.button("Clear Selection", use_container_width=True):
-            st.session_state.selected_projects = set()
-            for k in project_keys:
-                st.session_state[f"cb_{k}"] = False
-            st.rerun()
+        tab1, tab2 = st.tabs(["🎯 Active Workspace", "⚙️ Manage Tracked Projects"])
 
-        # Grid-based Checkbox Layout
-        if all_projects:
-            cols = st.columns(4)
-            for idx, p in enumerate(all_projects):
-                with cols[idx % 4]:
-                    p_key = p['key']
-                    
-                    # Define a callback for the checkbox to update session state immediately
-                    def on_change(key=p_key):
-                        if st.session_state[f"cb_{key}"]:
-                            st.session_state.selected_projects.add(key)
-                        else:
-                            st.session_state.selected_projects.discard(key)
-
-                    st.checkbox(
-                        f"**{p_key}**", 
-                        key=f"cb_{p_key}", 
-                        help=p['name'],
-                        on_change=on_change
-                    )
-
-        st.divider()
-        current_selection = list(st.session_state.selected_projects)
-        if current_selection:
-            st.success(f"✅ **{len(current_selection)} Projects Active:** {', '.join(sorted(current_selection))}")
+        with tab1:
+            st.header("🎯 Select Active Projects")
             
-            with st.expander("💾 Save Current Selection as Shortcut"):
-                shortcut_name = st.text_input("Shortcut Name")
-                if st.button("Save Shortcut"):
-                    if shortcut_name:
-                        if save_shortcut(shortcut_name, current_selection, st.session_state.selected_versions):
-                            st.success(f"Saved shortcut: {shortcut_name}")
+            # Consolidate status messages
+            current_selection = list(st.session_state.selected_projects)
+            
+            if not all_projects:
+                st.info("💡 **Getting Started:** You haven't tracked any projects yet. Go to the **'Manage Tracked Projects'** tab to add some from your Jira account.")
+            elif not current_selection:
+                st.info("🎯 **Select Projects:** Select projects from your tracked list below to define your active workspace.")
+            else:
+                st.success(f"✅ **{len(current_selection)} Projects Active:** {', '.join(sorted(current_selection))}")
+
+            if all_projects:
+                col_ctrl1, col_ctrl2, _ = st.columns([1, 1, 4])
+                if col_ctrl1.button("Select All Tracked", use_container_width=True):
+                    st.session_state.selected_projects = set(project_keys)
+                    for k in project_keys:
+                        st.session_state[f"cb_{k}"] = True
+                    st.rerun()
+                if col_ctrl2.button("Clear Selection", use_container_width=True):
+                    st.session_state.selected_projects = set()
+                    for k in project_keys:
+                        st.session_state[f"cb_{k}"] = False
+                    st.rerun()
+
+                # Grid-based Checkbox Layout
+                cols = st.columns(4)
+                for idx, p in enumerate(all_projects):
+                    with cols[idx % 4]:
+                        p_key = p['key']
+                        
+                        def on_change(key=p_key):
+                            if st.session_state[f"cb_{key}"]:
+                                st.session_state.selected_projects.add(key)
+                            else:
+                                st.session_state.selected_projects.discard(key)
+
+                        st.checkbox(
+                            f"**{p_key}**", 
+                            key=f"cb_{p_key}", 
+                            help=p['name'],
+                            on_change=on_change
+                        )
+
+                if current_selection:
+                    st.divider()
+                    with st.expander("💾 Save Current Selection as Shortcut"):
+                        shortcut_name = st.text_input("Shortcut Name")
+                        if st.button("Save Shortcut"):
+                            if shortcut_name:
+                                if save_shortcut(username, shortcut_name, current_selection, st.session_state.selected_versions):
+                                    st.success(f"Saved shortcut: {shortcut_name}")
+                                    st.rerun()
+                            else:
+                                st.error("Please provide a name for the shortcut.")
+
+        with tab2:
+            st.header("⚙️ Manage Tracked Projects")
+            st.write("Add or remove projects from your Jira account that you want to manage here.")
+            
+            # Export/Import Section for "Per-User" feel on shared servers
+            with st.expander("💾 Personalize your Workspace (Export/Import)"):
+                st.write("Use these to move your settings between computers or servers.")
+                col_ex1, col_ex2 = st.columns(2)
+                
+                # Export
+                workspace_data = {
+                    "managed_projects": load_managed_projects(username),
+                    "shortcuts": load_shortcuts(username)
+                }
+                workspace_json = json.dumps(workspace_data, indent=4)
+                col_ex1.download_button(
+                    label="📥 Export My Workspace",
+                    data=workspace_json,
+                    file_name=f"jira_workspace_{username}.json",
+                    mime="application/json",
+                    use_container_width=True,
+                    help="Save your tracked projects and shortcuts to your computer."
+                )
+                
+                # Import
+                uploaded_file = col_ex2.file_uploader("📤 Import Workspace", type="json", label_visibility="collapsed")
+                if uploaded_file is not None:
+                    try:
+                        data = json.load(uploaded_file)
+                        if "managed_projects" in data and "shortcuts" in data:
+                            save_managed_projects(username, data["managed_projects"])
+                            save_shortcuts(username, data["shortcuts"])
+                            st.success("Workspace imported! Reloading...")
+                            st.cache_data.clear()
                             st.rerun()
+                        else:
+                            st.error("Invalid workspace file.")
+                    except Exception as e:
+                        st.error(f"Error importing: {e}")
+
+            # Add Project Section
+            with st.expander("➕ Add Projects from Jira"):
+                all_jira_projects = get_all_jira_projects_cached()
+                if all_jira_projects:
+                    managed_keys = set(load_managed_projects(username))
+                    available_to_add = [p for p in all_jira_projects if p['key'] not in managed_keys]
+                    
+                    if available_to_add:
+                        to_add = st.multiselect(
+                            "Select Projects to Add",
+                            options=[f"{p['key']} - {p['name']}" for p in available_to_add]
+                        )
+                        if st.button("Add Selected Projects"):
+                            new_keys = [s.split(" - ")[0] for s in to_add]
+                            updated_managed = list(managed_keys) + new_keys
+                            if save_managed_projects(username, updated_managed):
+                                st.success(f"Added: {', '.join(new_keys)}")
+                                st.cache_data.clear()
+                                st.rerun()
                     else:
-                        st.error("Please provide a name for the shortcut.")
-        else:
-            st.warning("⚠️ No projects selected. Please select projects to begin.")
+                        st.info("All your Jira projects are already being tracked.")
+                else:
+                    st.error("Could not fetch projects from Jira. Check your Config.")
+
+            # Remove Project Section
+            if all_projects:
+                st.subheader("🗑️ Remove Tracked Projects")
+                st.write("Click to remove projects from your UI (this does NOT delete them from Jira).")
+                
+                # Use a table-like layout for removal
+                for p in all_projects:
+                    col_rm1, col_rm2 = st.columns([5, 1])
+                    col_rm1.write(f"**{p['key']}** - {p['name']}")
+                    if col_rm2.button("Remove", key=f"rm_{p['key']}"):
+                        managed_keys = load_managed_projects(username)
+                        if p['key'] in managed_keys:
+                            managed_keys.remove(p['key'])
+                            if save_managed_projects(username, managed_keys):
+                                st.session_state.selected_projects.discard(p['key'])
+                                st.cache_data.clear()
+                                st.rerun()
 
         # --- Navigation Footer ---
         if current_selection:

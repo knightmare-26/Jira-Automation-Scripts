@@ -2,37 +2,33 @@
 
 A simple tool to manage Jira fix versions across multiple projects at once.
 
+## 👥 Sharing the Application
+1. **Push to GitHub:** If you haven't already, push this project to your GitHub repository.
+2. **Instructions for New Users:**
+   - Go to your GitHub repository.
+   - Click the green **"<> Code"** button and select **"Download ZIP"** (or clone it if they know Git).
+   - Follow the **🚀 Easy Start** instructions below.
+
 ## 🚀 Easy Start (For Everyone)
-If you just want to run the tool:
-1. **Unzip** the folder.
+No developer knowledge is required!
+1. **Unzip** the folder you downloaded.
 2. **Double-click** the file named `Run_Jira_Manager.command`.
    - *Note: If macOS prevents it from opening, Right-Click the file and select "Open".*
-3. A terminal window will open and automatically set everything up. 
+3. A terminal window will open and automatically set everything up for you. 
 4. **Wait a few seconds**, and the manager will open in your web browser.
 5. Go to the **⚙️ Config** page in the sidebar to enter your Jira details.
 
 ---
 
-## 🛠️ For Technical Users
-### Prerequisites
-- Python 3.9+
-- Jira API Token (https://id.atlassian.com/manage-profile/security/api-tokens)
-
-### Installation & Manual Run
-```bash
-pip install -r requirements.txt
-streamlit run jira_ui.py
-```
-
-## Features
-- **📂 Manage Projects:** Select which projects to target using the checkbox grid.
-- **🚀 Create Versions:** Quickly create new versions across all selected projects.
-- **📦 Release/Archive:** Batch update existing versions.
-- **📍 Quick Shortcuts:** Save your project sets and version names for one-click access.
+## 📂 Manage Projects
+You can customize which projects appear in your UI:
+1. Go to **📂 Manage Projects**.
+2. Use the **"⚙️ Manage Tracked Projects"** tab to add any project from your Jira account or remove ones you don't need.
+3. Use the **"🎯 Active Workspace"** tab to quickly select which of your tracked projects you want to work with right now.
 
 ## Security & Privacy
 - **Local Storage:** All credentials and shortcuts are stored **only on your computer** in `jira_config_local.py` and `local_shortcuts.json`.
 - **Git Protected:** These files are automatically ignored by Git to prevent accidental sharing.
 
 ---
-**Note for the Sharer:** Before zipping this folder to send to colleagues, please delete your local `jira_config_local.py` and `local_shortcuts.json` files so they don't include your private credentials!
+**Note for the Sharer:** Before zipping this folder to send to others, please delete your local `jira_config_local.py` and `local_shortcuts.json` files so they don't include your private credentials!
