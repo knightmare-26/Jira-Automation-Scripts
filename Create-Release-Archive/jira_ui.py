@@ -320,12 +320,18 @@ def main():
     authenticator.logout('Logout', location='sidebar')
 
     # --- Global Config Check ---
-    # We check if the connection to Jira is configured
+    # Reload jira_config dynamically to see changes saved to jira_config_local.py
+    import importlib
+    import jira_config
+    importlib.reload(jira_config)
+    
     is_config_valid = all([jira_config.JIRA_BASE_URL, jira_config.JIRA_EMAIL, jira_config.JIRA_API_TOKEN])
     
     if not is_config_valid:
-        st.warning("⚠️ **Action Required:** Jira configuration is incomplete. Please set up your credentials below.")
-        st.session_state.current_page = "⚙️ Config"
+        if st.session_state.current_page != "⚙️ Config":
+            st.warning("⚠️ **Action Required:** Jira configuration is incomplete. Please set up your credentials below.")
+            st.session_state.current_page = "⚙️ Config"
+            st.rerun()
 
     # --- Shared Data ---
     # Only try to fetch projects if config is valid
