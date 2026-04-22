@@ -320,21 +320,21 @@ def main():
     authenticator.logout('Logout', location='sidebar')
 
     # --- Global Config Check ---
-    # Reload jira_config dynamically to see changes saved to jira_config_local.py
-    import importlib
-    import jira_config
-    importlib.reload(jira_config)
+    # Reload config if requested (e.g. after save) or on first session run
+    if 'config_reloaded' not in st.session_state:
+        import importlib
+        import jira_config
+        importlib.reload(jira_config)
+        st.session_state.config_reloaded = True
     
     is_config_valid = all([jira_config.JIRA_BASE_URL, jira_config.JIRA_EMAIL, jira_config.JIRA_API_TOKEN])
     
-    if not is_config_valid:
-        if st.session_state.current_page != "⚙️ Config":
-            st.warning("⚠️ **Action Required:** Jira configuration is incomplete. Please set up your credentials below.")
-            st.session_state.current_page = "⚙️ Config"
-            st.rerun()
+    if not is_config_valid and st.session_state.current_page != "⚙️ Config":
+        st.warning("⚠️ **Action Required:** Jira configuration is incomplete. Please set up your credentials below.")
+        st.session_state.current_page = "⚙️ Config"
+        st.rerun()
 
     # --- Shared Data ---
-    # Only try to fetch projects if config is valid
     all_projects = get_managed_projects_cached(username) if is_config_valid else []
     project_keys = [p['key'] for p in all_projects]
 
@@ -355,13 +355,13 @@ def main():
     # --- Sidebar Navigation ---
     st.sidebar.title("🎯 Jira Manager")
     
-    # Define available pages based on config status
+    # Define available pages
     if is_config_valid:
         nav_options = ["📂 Manage Projects", "🚀 Create Versions", "📦 Release/Archive", "⚙️ Config"]
     else:
         nav_options = ["⚙️ Config"]
     
-    # Ensure current_page is valid for nav_options
+    # Ensure current_page is valid
     if st.session_state.current_page not in nav_options:
         st.session_state.current_page = nav_options[0]
 
@@ -372,7 +372,6 @@ def main():
 
     page = st.sidebar.radio("Navigation", options=nav_options, index=current_index, key="nav_widget")
     
-    # Sync session state if user clicks the radio button directly
     if page != st.session_state.current_page:
         st.session_state.current_page = page
         st.rerun()
