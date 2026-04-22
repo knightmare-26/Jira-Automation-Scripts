@@ -7,6 +7,7 @@ import logging
 import json
 import streamlit_authenticator as stauth
 import yaml
+import importlib
 from yaml.loader import SafeLoader
 from supabase import create_client, Client
 
@@ -320,11 +321,7 @@ def main():
     authenticator.logout('Logout', location='sidebar')
 
     # --- Global Config Check ---
-    # Reload config if requested (e.g. after save) or on first session run
-    if st.session_state.get('config_reloaded') != True:
-        importlib.reload(jira_config)
-        st.session_state.config_reloaded = True
-    
+    # Refresh config validity
     is_config_valid = all([jira_config.JIRA_BASE_URL, jira_config.JIRA_EMAIL, jira_config.JIRA_API_TOKEN])
     
     if not is_config_valid and st.session_state.current_page != "⚙️ Config":
