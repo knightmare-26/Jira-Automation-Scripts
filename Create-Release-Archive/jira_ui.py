@@ -180,9 +180,14 @@ JIRA_API_TOKEN = "{token}"
     with open("jira_config_local.py", "w") as f:
         f.write(config_content)
     
+    # Clear the cache so it sees the new file
     st.cache_data.clear()
+    
+    # Update session state to move to Manage Projects
     st.session_state.current_page = "📂 Manage Projects"
-    st.success("Configuration saved! Re-loading...")
+    
+    # Force a full script rerun
+    st.rerun()
 
 def save_users_config(config):
     # Save to local file
