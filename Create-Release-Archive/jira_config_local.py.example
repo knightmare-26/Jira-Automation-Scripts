@@ -1,0 +1,8 @@
+# JIRA Configuration Overrides
+# ------------------------------
+# Copy this file to jira_config_local.py and update with your credentials.
+# Do NOT commit jira_config_local.py to version control.
+
+JIRA_BASE_URL = "https://your-domain.atlassian.net"
+JIRA_EMAIL = "your-email@company.com"
+JIRA_API_TOKEN = "your-jira-api-token"
