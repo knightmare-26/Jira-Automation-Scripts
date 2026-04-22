@@ -312,7 +312,7 @@ def main():
         if st.session_state.get("authentication_status") != True:
             return
 
-    # --- Authenticated App ---
+# --- Authenticated App ---
     name = st.session_state["name"]
     username = st.session_state["username"]
     
@@ -321,9 +321,7 @@ def main():
 
     # --- Global Config Check ---
     # Reload config if requested (e.g. after save) or on first session run
-    if 'config_reloaded' not in st.session_state:
-        import importlib
-        import jira_config
+    if st.session_state.get('config_reloaded') != True:
         importlib.reload(jira_config)
         st.session_state.config_reloaded = True
     
