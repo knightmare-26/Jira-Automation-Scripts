@@ -209,14 +209,34 @@ def get_versions_for_projects_cached(project_keys):
     return sorted(list(all_version_names))
 
 def save_config(url, email, token):
-    config_content = f"""JIRA_BASE_URL = "{url}"
-JIRA_EMAIL = "{email}"
-JIRA_API_TOKEN = "{token}"
-"""
-    with open("jira_config_local.py", "w") as f:
-        f.write(config_content)
-    
-    # Clear the cache so it sees the new file
+    # Save to Supabase
+    if supabase:
+        try:
+            config_data = {
+                "JIRA_BASE_URL": url,
+                "JIRA_EMAIL": email,
+                "JIRA_API_TOKEN": token
+            }
+            supabase.table("app_config").upsert({
+                "id": "jira_config",
+                "content": config_data
+            }).execute()
+        except Exception as e:
+            logger.error(f"Error saving Jira config to Supabase: {e}")
+            st.error("Failed to save configuration to cloud.")
+            return
+
+    # Update the jira_config module directly
+    jira_config.JIRA_BASE_URL = url
+    jira_config.JIRA_EMAIL = email
+    jira_config.JIRA_API_TOKEN = token
+    # Re-calculate dependent variables in the module if possible, 
+    # but jira_config variables are used in jira_utils which imports them.
+    # To be safe, we refresh the jira_config module's calculated properties:
+    jira_config.API_BASE = f"{url}/rest/api/3" if url else None
+    jira_config.AUTH = (email, token) if email and token else None
+
+    # Clear the cache so it sees the new config
     st.cache_data.clear()
     
     # Update session state to move to Manage Projects
@@ -224,6 +244,24 @@ JIRA_API_TOKEN = "{token}"
     
     # Force a full script rerun
     st.rerun()
+
+def load_jira_config():
+    """Load Jira configuration from Supabase into the jira_config module."""
+    if supabase:
+        try:
+            response = supabase.table("app_config").select("content").eq("id", "jira_config").execute()
+            if response.data:
+                content = response.data[0].get("content", {})
+                jira_config.JIRA_BASE_URL = content.get("JIRA_BASE_URL")
+                jira_config.JIRA_EMAIL = content.get("JIRA_EMAIL")
+                jira_config.JIRA_API_TOKEN = content.get("JIRA_API_TOKEN")
+                # Refresh derived values
+                jira_config.API_BASE = f"{jira_config.JIRA_BASE_URL}/rest/api/3" if jira_config.JIRA_BASE_URL else None
+                jira_config.AUTH = (jira_config.JIRA_EMAIL, jira_config.JIRA_API_TOKEN) if jira_config.JIRA_EMAIL and jira_config.JIRA_API_TOKEN else None
+                return True
+        except Exception as e:
+            logger.error(f"Error loading Jira config from Supabase: {e}")
+    return False
 
 def save_users_config(config):
     # Save to local file
@@ -247,6 +285,13 @@ def save_users_config(config):
     return True
 
 def main():
+    # Initialize session state for current page first thing
+    if 'current_page' not in st.session_state:
+        st.session_state.current_page = "⚙️ Config"
+
+    # --- Jira Config Cloud Sync ---
+    load_jira_config()
+
     # --- Authentication Setup & Cloud Sync ---
     # 1. Check if we should pull from cloud first
     if supabase:
@@ -324,7 +369,7 @@ def main():
     # Refresh config validity
     is_config_valid = all([jira_config.JIRA_BASE_URL, jira_config.JIRA_EMAIL, jira_config.JIRA_API_TOKEN])
     
-    if not is_config_valid and st.session_state.current_page != "⚙️ Config":
+    if not is_config_valid and st.session_state.get('current_page') != "⚙️ Config":
         st.warning("⚠️ **Action Required:** Jira configuration is incomplete. Please set up your credentials below.")
         st.session_state.current_page = "⚙️ Config"
         st.rerun()
@@ -333,9 +378,6 @@ def main():
     all_projects = get_managed_projects_cached(username) if is_config_valid else []
     project_keys = [p['key'] for p in all_projects]
 
-    # Initialize session state for selections
-    if 'current_page' not in st.session_state:
-        st.session_state.current_page = "📂 Manage Projects"
     if 'selected_projects' not in st.session_state:
         st.session_state.selected_projects = set()
     
