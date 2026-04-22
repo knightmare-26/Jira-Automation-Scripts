@@ -181,6 +181,7 @@ JIRA_API_TOKEN = "{token}"
         f.write(config_content)
     
     st.cache_data.clear()
+    st.session_state.current_page = "📂 Manage Projects"
     st.success("Configuration saved! Re-loading...")
 
 def save_users_config(config):
