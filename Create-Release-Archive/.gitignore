@@ -3,3 +3,12 @@ jira_automation_runs.log
 .env
 __pycache__/
 .DS_Store
+jira_config_local.py
+local_shortcuts.json
+
+# Credentials and local data
+*.json
+*.yaml
+*.log
+.streamlit/
+__pycache__/
