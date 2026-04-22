@@ -1,16 +1,16 @@
 import requests
 import logging
 from datetime import datetime, timezone
-from jira_config import API_BASE, AUTH, HEADERS, JIRA_EMAIL
+import jira_config
 
 logger = logging.getLogger(__name__)
 
 def get_projects():
     """Fetch all available JIRA projects."""
-    if not API_BASE or not AUTH:
+    if not jira_config.API_BASE or not jira_config.AUTH:
         return []
     try:
-        r = requests.get(f"{API_BASE}/project", auth=AUTH, headers=HEADERS)
+        r = requests.get(f"{jira_config.API_BASE}/project", auth=jira_config.AUTH, headers=jira_config.HEADERS)
         r.raise_for_status()
         return r.json()
     except Exception as e:
@@ -19,10 +19,10 @@ def get_projects():
 
 def get_versions(project_key):
     """Fetch all versions for a specific project."""
-    if not API_BASE or not AUTH:
+    if not jira_config.API_BASE or not jira_config.AUTH:
         return []
     try:
-        r = requests.get(f"{API_BASE}/project/{project_key}/versions", auth=AUTH, headers=HEADERS)
+        r = requests.get(f"{jira_config.API_BASE}/project/{project_key}/versions", auth=jira_config.AUTH, headers=jira_config.HEADERS)
         r.raise_for_status()
         return r.json()
     except Exception as e:
@@ -46,11 +46,11 @@ def get_all_fix_versions(project_keys=None):
 
 def create_version(project_key, version_name, start_date=None, release_date=None):
     """Create a new version in a project."""
-    if not API_BASE or not AUTH:
+    if not jira_config.API_BASE or not jira_config.AUTH:
         return False
     
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    user_info = f" by {JIRA_EMAIL}" if JIRA_EMAIL else ""
+    user_info = f" by {jira_config.JIRA_EMAIL}" if jira_config.JIRA_EMAIL else ""
     description = f"Created{user_info} on {now_str}."
     
     payload = {
@@ -66,9 +66,9 @@ def create_version(project_key, version_name, start_date=None, release_date=None
 
     try:
         r = requests.post(
-            f"{API_BASE}/version",
-            auth=AUTH,
-            headers=HEADERS,
+            f"{jira_config.API_BASE}/version",
+            auth=jira_config.AUTH,
+            headers=jira_config.HEADERS,
             json=payload,
         )
         r.raise_for_status()
@@ -79,10 +79,10 @@ def create_version(project_key, version_name, start_date=None, release_date=None
 
 def get_version(version_id):
     """Fetch details for a specific version."""
-    if not API_BASE or not AUTH:
+    if not jira_config.API_BASE or not jira_config.AUTH:
         return None
     try:
-        r = requests.get(f"{API_BASE}/version/{version_id}", auth=AUTH, headers=HEADERS)
+        r = requests.get(f"{jira_config.API_BASE}/version/{version_id}", auth=jira_config.AUTH, headers=jira_config.HEADERS)
         r.raise_for_status()
         return r.json()
     except Exception as e:
@@ -91,7 +91,7 @@ def get_version(version_id):
 
 def release_version(version_id, project_key, version_name):
     """Mark a version as released."""
-    if not API_BASE or not AUTH:
+    if not jira_config.API_BASE or not jira_config.AUTH:
         return False
     
     # Fetch existing version to preserve description
@@ -99,16 +99,16 @@ def release_version(version_id, project_key, version_name):
     existing_desc = existing_version.get("description", "") if existing_version else ""
     
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    user_info = f" by {JIRA_EMAIL}" if JIRA_EMAIL else ""
+    user_info = f" by {jira_config.JIRA_EMAIL}" if jira_config.JIRA_EMAIL else ""
     new_log = f"Released{user_info} on {now_str}."
     
     combined_desc = f"{existing_desc}\n{new_log}".strip()
     
     try:
         r = requests.put(
-            f"{API_BASE}/version/{version_id}",
-            auth=AUTH,
-            headers=HEADERS,
+            f"{jira_config.API_BASE}/version/{version_id}",
+            auth=jira_config.AUTH,
+            headers=jira_config.HEADERS,
             json={
                 "released": True,
                 "releaseDate": datetime.now(timezone.utc).date().isoformat(),
@@ -123,7 +123,7 @@ def release_version(version_id, project_key, version_name):
 
 def archive_version(version_id, project_key, version_name):
     """Mark a version as archived."""
-    if not API_BASE or not AUTH:
+    if not jira_config.API_BASE or not jira_config.AUTH:
         return False
     
     # Fetch existing version to preserve description
@@ -131,16 +131,16 @@ def archive_version(version_id, project_key, version_name):
     existing_desc = existing_version.get("description", "") if existing_version else ""
     
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    user_info = f" by {JIRA_EMAIL}" if JIRA_EMAIL else ""
+    user_info = f" by {jira_config.JIRA_EMAIL}" if jira_config.JIRA_EMAIL else ""
     new_log = f"Archived{user_info} on {now_str}."
     
     combined_desc = f"{existing_desc}\n{new_log}".strip()
     
     try:
         r = requests.put(
-            f"{API_BASE}/version/{version_id}",
-            auth=AUTH,
-            headers=HEADERS,
+            f"{jira_config.API_BASE}/version/{version_id}",
+            auth=jira_config.AUTH,
+            headers=jira_config.HEADERS,
             json={
                 "archived": True,
                 "description": combined_desc
