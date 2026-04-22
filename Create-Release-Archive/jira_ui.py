@@ -312,7 +312,7 @@ def main():
         if st.session_state.get("authentication_status") != True:
             return
 
-# --- Authenticated App ---
+    # --- Authenticated App ---
     name = st.session_state["name"]
     username = st.session_state["username"]
     
