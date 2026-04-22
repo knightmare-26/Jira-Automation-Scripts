@@ -12,3 +12,4 @@ local_shortcuts.json
 *.log
 .streamlit/
 __pycache__/
+jira_automation_runs.log
