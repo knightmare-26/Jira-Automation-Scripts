@@ -62,8 +62,6 @@ def cleanup_old_logs(log_file="jira_automation_runs.log", days=30):
     except Exception as e:
         logger.error(f"Error cleaning up logs: {e}")
 
-# ... (rest of imports)
-
 # Logging configuration
 logging.basicConfig(
     level=logging.INFO,
@@ -80,6 +78,7 @@ file_handler.setFormatter(
 )
 logger.addHandler(file_handler)
 
+@st.cache_data(ttl=1800)
 def load_managed_projects(username):
     # Try Supabase first
     if supabase:
@@ -108,6 +107,7 @@ def save_managed_projects(username, projects):
                 "username": username,
                 "managed_projects": projects
             }).execute()
+            st.cache_data.clear() # Clear cache so changes reflect
             return True # Success in cloud
         except Exception as e:
             logger.error(f"Supabase save error for {username}: {e}")
@@ -117,11 +117,13 @@ def save_managed_projects(username, projects):
     try:
         with open(filename, "w") as f:
             json.dump(projects, f, indent=4)
+        st.cache_data.clear()
         return True
     except Exception as e:
         logger.error(f"Error saving managed projects locally for {username}: {e}")
         return False
 
+@st.cache_data(ttl=1800)
 def load_shortcuts(username):
     # Try Supabase first
     if supabase:
@@ -158,9 +160,10 @@ def save_shortcuts(username, shortcuts):
     try:
         with open(filename, "w") as f:
             json.dump(shortcuts, f, indent=4)
+        st.cache_data.clear() # Clear cache
         return True
     except Exception as e:
-        logger.error(f"Error saving shortcuts for {username}: {e}")
+        logger.error(f"Error saving shortcuts locally for {username}: {e}")
         return False
 
 def save_shortcut(username, name, projects, versions):
@@ -230,14 +233,16 @@ def save_config(url, email, token):
     jira_config.JIRA_BASE_URL = url
     jira_config.JIRA_EMAIL = email
     jira_config.JIRA_API_TOKEN = token
-    # Re-calculate dependent variables in the module if possible, 
-    # but jira_config variables are used in jira_utils which imports them.
-    # To be safe, we refresh the jira_config module's calculated properties:
+    # Re-calculate dependent variables
     jira_config.API_BASE = f"{url}/rest/api/3" if url else None
     jira_config.AUTH = (email, token) if email and token else None
 
     # Clear the cache so it sees the new config
     st.cache_data.clear()
+    
+    # Success message and redirect
+    st.success("✅ Configuration saved successfully! Redirecting...")
+    time.sleep(1) 
     
     # Update session state to move to Manage Projects
     st.session_state.current_page = "📂 Manage Projects"
@@ -289,20 +294,24 @@ def main():
     if 'current_page' not in st.session_state:
         st.session_state.current_page = "⚙️ Config"
 
-    # --- Jira Config Cloud Sync ---
-    load_jira_config()
+    # --- Cloud Sync Optimization ---
+    # Sync from cloud only once per browser session
+    if 'cloud_synced' not in st.session_state:
+        # 1. Load Jira Connection Config
+        load_jira_config()
 
-    # --- Authentication Setup & Cloud Sync ---
-    # 1. Check if we should pull from cloud first
-    if supabase:
-        try:
-            response = supabase.table("app_config").select("content").eq("id", "users_config").execute()
-            if response.data:
-                cloud_config = response.data[0].get("content")
-                with open('users.yaml', 'w') as file:
-                    yaml.dump(cloud_config, file, default_flow_style=False)
-        except Exception as e:
-            logger.error(f"Cloud config pull failed: {e}")
+        # 2. Sync Users Auth Config
+        if supabase:
+            try:
+                response = supabase.table("app_config").select("content").eq("id", "users_config").execute()
+                if response.data:
+                    cloud_config = response.data[0].get("content")
+                    with open('users.yaml', 'w') as file:
+                        yaml.dump(cloud_config, file, default_flow_style=False)
+            except Exception as e:
+                logger.error(f"Cloud config pull failed: {e}")
+        
+        st.session_state.cloud_synced = True
 
     if not os.path.exists('users.yaml'):
         initial_config = {
