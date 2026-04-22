@@ -403,15 +403,6 @@ def main():
             save_config(url, email, token)
             st.rerun()
 
-        st.divider()
-        st.subheader("📤 Sharing the Application")
-        st.write("To share this application:")
-        st.markdown("""
-        1. **Share the URL:** Provide the link to this web application to other users.
-        2. **Account Creation:** Users can click the **Sign Up** tab on the login screen to create their own secure account.
-        3. **Configuration:** After logging in, users should enter their own Jira details in this **Config** tab. Settings are saved privately to each account!
-        """)
-
     elif page == "📂 Manage Projects":
         st.title("📂 Manage Projects")
         
