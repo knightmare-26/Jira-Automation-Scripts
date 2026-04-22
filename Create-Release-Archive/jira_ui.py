@@ -32,12 +32,47 @@ def get_user_projects_file(username):
 def get_user_shortcuts_file(username):
     return f"{username}_local_shortcuts.json"
 
+import time
+from datetime import datetime, timedelta
+
+def cleanup_old_logs(log_file="jira_automation_runs.log", days=30):
+    if not os.path.exists(log_file):
+        return
+    
+    cutoff = datetime.now() - timedelta(days=days)
+    new_logs = []
+    
+    try:
+        with open(log_file, "r") as f:
+            for line in f:
+                # Assuming log format starts with timestamp, e.g., "2026-04-22 14:30:12"
+                try:
+                    log_date_str = line.split(" [")[0]
+                    log_date = datetime.strptime(log_date_str, "%Y-%m-%d %H:%M:%S")
+                    if log_date >= cutoff:
+                        new_logs.append(line)
+                except (ValueError, IndexError):
+                    # Keep lines that don't match expected timestamp format
+                    new_logs.append(line)
+        
+        with open(log_file, "w") as f:
+            f.writelines(new_logs)
+            
+    except Exception as e:
+        logger.error(f"Error cleaning up logs: {e}")
+
+# ... (rest of imports)
+
 # Logging configuration
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+# Run cleanup at startup
+cleanup_old_logs()
+
 file_handler = logging.FileHandler("jira_automation_runs.log")
 file_handler.setFormatter(
     logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
