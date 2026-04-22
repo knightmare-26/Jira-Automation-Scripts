@@ -246,8 +246,7 @@ def save_config(url, email, token):
     
     # Update session state to move to Manage Projects
     st.session_state.current_page = "📂 Manage Projects"
-    st.session_state.nav_widget = "📂 Manage Projects"
-    
+
     # Force a full script rerun
     st.rerun()
 
@@ -382,7 +381,6 @@ def main():
     if not is_config_valid and st.session_state.get('current_page') != "⚙️ Config":
         st.warning("⚠️ **Action Required:** Jira configuration is incomplete. Please set up your credentials below.")
         st.session_state.current_page = "⚙️ Config"
-        st.session_state.nav_widget = "⚙️ Config"
         st.rerun()
 
     # --- Shared Data ---
@@ -418,7 +416,7 @@ def main():
     except ValueError:
         current_index = 0
 
-    page = st.sidebar.radio("Navigation", options=nav_options, index=current_index, key="nav_widget")
+    page = st.sidebar.radio("Navigation", options=nav_options, index=current_index)
     
     if page != st.session_state.current_page:
         st.session_state.current_page = page
@@ -440,7 +438,6 @@ def main():
                 for k in project_keys:
                     st.session_state[f"cb_{k}"] = k in st.session_state.selected_projects
                 st.session_state.current_page = "📂 Manage Projects"
-                st.session_state.nav_widget = "📂 Manage Projects"
                 st.rerun()
             if col2.button("🗑️", key=f"del_{s_name}"):
                 if delete_shortcut(username, s_name):
@@ -608,11 +605,9 @@ def main():
             col_nav1, col_nav2 = st.columns(2)
             if col_nav1.button("Go to: Create Versions 🚀", use_container_width=True):
                 st.session_state.current_page = "🚀 Create Versions"
-                st.session_state.nav_widget = "🚀 Create Versions"
                 st.rerun()
             if col_nav2.button("Go to: Release/Archive 📦", use_container_width=True):
                 st.session_state.current_page = "📦 Release/Archive"
-                st.session_state.nav_widget = "📦 Release/Archive"
                 st.rerun()
 
     elif page == "🚀 Create Versions":
