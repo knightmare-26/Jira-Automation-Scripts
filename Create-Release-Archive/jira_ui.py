@@ -512,15 +512,22 @@ def main():
 
                 if current_selection:
                     st.divider()
-                    with st.expander("💾 Save Current Selection as Shortcut"):
-                        shortcut_name = st.text_input("Shortcut Name")
-                        if st.button("Save Shortcut"):
-                            if shortcut_name:
-                                if save_shortcut(username, shortcut_name, current_selection, st.session_state.selected_versions):
-                                    st.success(f"Saved shortcut: {shortcut_name}")
+                    
+                    @st.dialog("💾 Save Workspace Shortcut")
+                    def save_shortcut_dialog():
+                        st.write(f"Save these **{len(current_selection)} projects** as a quick-access shortcut.")
+                        s_name = st.text_input("Shortcut Name", placeholder="e.g. Mobile Team, Project Alpha")
+                        if st.button("Save Shortcut", type="primary", use_container_width=True):
+                            if s_name:
+                                if save_shortcut(username, s_name, current_selection, st.session_state.selected_versions):
+                                    st.success(f"Saved shortcut: {s_name}")
+                                    time.sleep(1)
                                     st.rerun()
                             else:
                                 st.error("Please provide a name for the shortcut.")
+
+                    if st.button("💾 Save Selection as Shortcut", use_container_width=True):
+                        save_shortcut_dialog()
 
         with tab2:
             # Add Project Section
