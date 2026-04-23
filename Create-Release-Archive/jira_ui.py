@@ -212,56 +212,14 @@ def get_versions_for_projects_cached(config_tuple, project_keys):
             all_version_names.add(v.get('name'))
     return sorted(list(all_version_names))
 
-def save_config(url, email, token):
-    # Save to user-specific settings in Supabase
-    username = st.session_state.get("username")
-    if supabase and username:
-        try:
-            config_data = {
-                "JIRA_BASE_URL": url,
-                "JIRA_EMAIL": email,
-                "JIRA_API_TOKEN": token
-            }
-            # Upsert into user_settings table instead of global app_config
-            supabase.table("user_settings").upsert({
-                "username": username,
-                "jira_config": config_data
-            }).execute()
-
-            # Update local session state
-            st.session_state.jira_config = {
-                "JIRA_BASE_URL": url,
-                "JIRA_EMAIL": email,
-                "JIRA_API_TOKEN": token,
-                "API_BASE": f"{url}/rest/api/3" if url else None,
-                "AUTH": (email, token) if email and token else None,
-                "HEADERS": {"Accept": "application/json", "Content-Type": "application/json"}
-            }
-        except Exception as e:
-            logger.error(f"Error saving Jira config to Supabase: {e}")
-            st.error("Failed to save configuration to cloud.")
-            return
-
-    # Clear the cache so it sees the new config
-    st.cache_data.clear()
-
-    # Success message and redirect (Preserving your original message)
-    st.success("✅ Configuration saved successfully! Redirecting...")
-    time.sleep(1) 
-
-    # Update session state to move to Manage Projects
-    st.session_state.current_page = "📂 Manage Projects"
-
-    # Force a full script rerun
-    st.rerun()
-
 def load_jira_config(username):
     """Load private Jira configuration for a specific user from Supabase."""
     if supabase:
         try:
-            response = supabase.table("user_settings").select("jira_config").eq("username", username).execute()
+            # Use app_config with a user-specific ID to avoid schema constraints
+            response = supabase.table("app_config").select("content").eq("id", f"jira_config_{username}").execute()
             if response.data:
-                content = response.data[0].get("jira_config", {})
+                content = response.data[0].get("content", {})
                 if content:
                     return {
                         "JIRA_BASE_URL": content.get("JIRA_BASE_URL"),
@@ -274,6 +232,37 @@ def load_jira_config(username):
         except Exception as e:
             logger.error(f"Error loading Jira config from Supabase for {username}: {e}")
     return {"JIRA_BASE_URL": None, "JIRA_EMAIL": None, "JIRA_API_TOKEN": None, "API_BASE": None, "AUTH": None, "HEADERS": None}
+
+def save_jira_config(username, url, email, token):
+    """Save private Jira configuration for a specific user to Supabase."""
+    config_data = {
+        "JIRA_BASE_URL": url,
+        "JIRA_EMAIL": email,
+        "JIRA_API_TOKEN": token
+    }
+    if supabase:
+        try:
+            # Store in app_config using a unique ID per user for isolation
+            supabase.table("app_config").upsert({
+                "id": f"jira_config_{username}",
+                "content": config_data
+            }).execute()
+            
+            # Update local session state
+            st.session_state.jira_config = {
+                "JIRA_BASE_URL": url,
+                "JIRA_EMAIL": email,
+                "JIRA_API_TOKEN": token,
+                "API_BASE": f"{url}/rest/api/3" if url else None,
+                "AUTH": (email, token) if email and token else None,
+                "HEADERS": {"Accept": "application/json", "Content-Type": "application/json"}
+            }
+            st.cache_data.clear()
+            return True
+        except Exception as e:
+            logger.error(f"Error saving Jira config to Supabase for {username}: {e}")
+            st.error("Failed to save configuration to cloud.")
+    return False
 def save_users_config(config):
     # Save to local file
     try:
@@ -465,8 +454,11 @@ def main():
         email = st.text_input("Jira Email", value=st.session_state.jira_config.get("JIRA_EMAIL") or "")
         token = st.text_input("Jira API Token", value=st.session_state.jira_config.get("JIRA_API_TOKEN") or "", type="password")
         if st.button("Save Configuration", type="primary"):
-            save_config(url, email, token)
-            st.rerun()
+            if save_jira_config(username, url, email, token):
+                st.success("✅ Configuration saved successfully! Redirecting...")
+                time.sleep(1) 
+                st.session_state.current_page = "📂 Manage Projects"
+                st.rerun()
 
     elif page == "📂 Manage Projects":
         st.title("📂 Manage Projects")
