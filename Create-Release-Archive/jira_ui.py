@@ -287,7 +287,7 @@ def save_users_config(config):
 def main():
     # Initialize session state for current page first thing
     if 'current_page' not in st.session_state:
-        st.session_state.current_page = "⚙️ Config"
+        st.session_state.current_page = "📂 Manage Projects"
 
     # --- Initial Cloud Sync (Authentication Only) ---
     # Sync auth config from cloud only once per browser session
@@ -474,7 +474,7 @@ def main():
             if not all_projects:
                 st.info("💡 **Getting Started:** You haven't tracked any projects yet. Go to the **'Manage Tracked Projects'** tab to add some from your Jira account.")
             elif not current_selection:
-                st.info("🎯 **Select Projects:** Select projects from your tracked list below to define your active workspace.")
+                pass # Removed redundant select projects info
             else:
                 st.success(f"✅ **{len(current_selection)} Projects Active:** {', '.join(sorted(current_selection))}")
 
@@ -523,8 +523,7 @@ def main():
                                 st.error("Please provide a name for the shortcut.")
 
         with tab2:
-            st.header("⚙️ Manage Tracked Projects")
-            st.write("Add or remove projects from your Jira account that you want to manage here.")
+            st.header("Add or remove Active projects:")
             
             # Export/Import Section for "Per-User" feel on shared servers
             with st.expander("💾 Personalize your Workspace (Export/Import)"):
@@ -570,17 +569,18 @@ def main():
                     available_to_add = [p for p in all_jira_projects if p['key'] not in managed_keys]
                     
                     if available_to_add:
-                        to_add = st.multiselect(
-                            "Select Projects to Add",
-                            options=[f"{p['key']} - {p['name']}" for p in available_to_add]
-                        )
-                        if st.button("Add Selected Projects"):
-                            new_keys = [s.split(" - ")[0] for s in to_add]
-                            updated_managed = list(managed_keys) + new_keys
-                            if save_managed_projects(username, updated_managed):
-                                st.success(f"Added: {', '.join(new_keys)}")
-                                st.cache_data.clear()
-                                st.rerun()
+                        search_add = st.text_input("Search Jira projects to add...", key="search_add").lower()
+                        filtered_add = [p for p in available_to_add if search_add in p['key'].lower() or search_add in p['name'].lower()]
+                        
+                        for p in filtered_add:
+                            col_add1, col_add2 = st.columns([5, 1])
+                            col_add1.write(f"**{p['key']}** - {p['name']}")
+                            if col_add2.button("Add", key=f"add_{p['key']}"):
+                                updated_managed = list(managed_keys) + [p['key']]
+                                if save_managed_projects(username, updated_managed):
+                                    st.success(f"Added: {p['key']}")
+                                    st.cache_data.clear()
+                                    st.rerun()
                     else:
                         st.info("All your Jira projects are already being tracked.")
                 else:
@@ -588,21 +588,24 @@ def main():
 
             # Remove Project Section
             if all_projects:
-                st.subheader("🗑️ Remove Tracked Projects")
-                st.write("Click to remove projects from your UI (this does NOT delete them from Jira).")
-                
-                # Use a table-like layout for removal
-                for p in all_projects:
-                    col_rm1, col_rm2 = st.columns([5, 1])
-                    col_rm1.write(f"**{p['key']}** - {p['name']}")
-                    if col_rm2.button("Remove", key=f"rm_{p['key']}"):
-                        managed_keys = load_managed_projects(username)
-                        if p['key'] in managed_keys:
-                            managed_keys.remove(p['key'])
-                            if save_managed_projects(username, managed_keys):
-                                st.session_state.selected_projects.discard(p['key'])
-                                st.cache_data.clear()
-                                st.rerun()
+                with st.expander("🗑️ Remove Tracked Projects"):
+                    search_rm = st.text_input("Search tracked projects to remove...", key="search_rm").lower()
+                    filtered_rm = [p for p in all_projects if search_rm in p['key'].lower() or search_rm in p['name'].lower()]
+                    
+                    if not filtered_rm:
+                        st.write("No matching projects found.")
+                    
+                    for p in filtered_rm:
+                        col_rm1, col_rm2 = st.columns([5, 1])
+                        col_rm1.write(f"**{p['key']}** - {p['name']}")
+                        if col_rm2.button("Remove", key=f"rm_{p['key']}"):
+                            managed_keys = load_managed_projects(username)
+                            if p['key'] in managed_keys:
+                                managed_keys.remove(p['key'])
+                                if save_managed_projects(username, managed_keys):
+                                    st.session_state.selected_projects.discard(p['key'])
+                                    st.cache_data.clear()
+                                    st.rerun()
 
         # --- Navigation Footer ---
         if current_selection:
