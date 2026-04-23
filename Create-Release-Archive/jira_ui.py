@@ -569,17 +569,38 @@ def main():
                     available_to_add = [p for p in all_jira_projects if p['key'] not in managed_keys]
                     
                     if available_to_add:
-                        search_add = st.text_input("Search Jira projects to add...", key="search_add").lower()
+                        # Batch Selection Area
+                        options_add = [f"{p['key']} | {p['name']}" for p in available_to_add]
+                        if "batch_add" not in st.session_state:
+                            st.session_state.batch_add = []
+                            
+                        selected_to_add = st.multiselect("Projects to Add (Search or use buttons below)", options=options_add, key="add_multiselect", default=st.session_state.batch_add)
+                        st.session_state.batch_add = selected_to_add
+
+                        # Search for Row-based Selection
+                        search_add = st.text_input("Quick Find:", key="search_add").lower()
                         filtered_add = [p for p in available_to_add if search_add in p['key'].lower() or search_add in p['name'].lower()]
                         
-                        for p in filtered_add:
+                        # Limit display for performance
+                        for p in filtered_add[:10]:
                             col_add1, col_add2 = st.columns([5, 1])
                             col_add1.write(f"**{p['key']}** - {p['name']}")
+                            p_val = f"{p['key']} | {p['name']}"
                             if col_add2.button("Add", key=f"add_{p['key']}"):
-                                updated_managed = list(managed_keys) + [p['key']]
+                                if p_val not in st.session_state.batch_add:
+                                    st.session_state.batch_add.append(p_val)
+                                    st.rerun()
+
+                        if st.session_state.batch_add:
+                            st.divider()
+                            if st.button("🚀 Confirm Adding Selected Projects", type="primary", use_container_width=True):
+                                new_keys = [s.split(" | ")[0] for s in st.session_state.batch_add]
+                                updated_managed = list(managed_keys) + new_keys
                                 if save_managed_projects(username, updated_managed):
-                                    st.success(f"Added: {p['key']}")
+                                    st.success(f"✅ Added {len(new_keys)} projects!")
+                                    st.session_state.batch_add = []
                                     st.cache_data.clear()
+                                    time.sleep(1)
                                     st.rerun()
                     else:
                         st.info("All your Jira projects are already being tracked.")
@@ -589,23 +610,41 @@ def main():
             # Remove Project Section
             if all_projects:
                 with st.expander("🗑️ Remove Tracked Projects"):
-                    search_rm = st.text_input("Search tracked projects to remove...", key="search_rm").lower()
+                    # Batch Selection Area
+                    options_rm = [f"{p['key']} | {p['name']}" for p in all_projects]
+                    if "batch_rm" not in st.session_state:
+                        st.session_state.batch_rm = []
+                        
+                    selected_to_rm = st.multiselect("Projects to Remove (Search or use buttons below)", options=options_rm, key="rm_multiselect", default=st.session_state.batch_rm)
+                    st.session_state.batch_rm = selected_to_rm
+
+                    # Search for Row-based Selection
+                    search_rm = st.text_input("Quick Find:", key="search_rm").lower()
                     filtered_rm = [p for p in all_projects if search_rm in p['key'].lower() or search_rm in p['name'].lower()]
-                    
-                    if not filtered_rm:
-                        st.write("No matching projects found.")
                     
                     for p in filtered_rm:
                         col_rm1, col_rm2 = st.columns([5, 1])
                         col_rm1.write(f"**{p['key']}** - {p['name']}")
+                        p_val = f"{p['key']} | {p['name']}"
                         if col_rm2.button("Remove", key=f"rm_{p['key']}"):
+                            if p_val not in st.session_state.batch_rm:
+                                st.session_state.batch_rm.append(p_val)
+                                st.rerun()
+
+                    if st.session_state.batch_rm:
+                        st.divider()
+                        if st.button("🗑️ Confirm Removing Selected Projects", type="primary", use_container_width=True):
+                            keys_to_rm = [s.split(" | ")[0] for s in st.session_state.batch_rm]
                             managed_keys = load_managed_projects(username)
-                            if p['key'] in managed_keys:
-                                managed_keys.remove(p['key'])
-                                if save_managed_projects(username, managed_keys):
-                                    st.session_state.selected_projects.discard(p['key'])
-                                    st.cache_data.clear()
-                                    st.rerun()
+                            updated_managed = [k for k in managed_keys if k not in keys_to_rm]
+                            if save_managed_projects(username, updated_managed):
+                                for k in keys_to_rm:
+                                    st.session_state.selected_projects.discard(k)
+                                st.success(f"🗑️ Removed {len(keys_to_rm)} projects!")
+                                st.session_state.batch_rm = []
+                                st.cache_data.clear()
+                                time.sleep(1)
+                                st.rerun()
 
         # --- Navigation Footer ---
         if current_selection:
