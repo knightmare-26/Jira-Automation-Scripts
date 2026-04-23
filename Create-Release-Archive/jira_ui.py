@@ -523,46 +523,6 @@ def main():
                                 st.error("Please provide a name for the shortcut.")
 
         with tab2:
-            st.header("Add or remove Active projects:")
-            
-            # Export/Import Section for "Per-User" feel on shared servers
-            with st.expander("💾 Personalize your Workspace (Export/Import)"):
-                st.write("Use these to move your settings between computers or servers.")
-                col_ex1, col_ex2 = st.columns(2)
-                
-                # Export
-                workspace_data = {
-                    "managed_projects": load_managed_projects(username),
-                    "shortcuts": load_shortcuts(username)
-                }
-                workspace_json = json.dumps(workspace_data, indent=4)
-                col_ex1.download_button(
-                    label="📥 Export My Workspace",
-                    data=workspace_json,
-                    file_name=f"jira_workspace_{username}.json",
-                    mime="application/json",
-                    use_container_width=True,
-                    help="Save your tracked projects and shortcuts to your computer."
-                )
-                
-                # Import
-                uploaded_file = col_ex2.file_uploader("📤 Import Workspace", type="json", label_visibility="collapsed")
-                if uploaded_file is not None:
-                    try:
-                        data = json.load(uploaded_file)
-                        if "managed_projects" in data and "shortcuts" in data:
-                            save_managed_projects(username, data["managed_projects"])
-                            save_shortcuts(username, data["shortcuts"])
-                            st.success("Workspace imported! Reloading...")
-                            st.cache_data.clear()
-                            st.rerun()
-                        else:
-                            st.error("Invalid workspace file.")
-                    except Exception as e:
-                        st.error(f"Error importing: {e}")
-
-            st.divider()
-
             # Add Project Section
             st.subheader("➕ Add Projects from Jira")
             all_jira_projects = get_all_jira_projects_cached(config_tuple)
