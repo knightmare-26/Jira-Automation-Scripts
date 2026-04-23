@@ -69,9 +69,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Run cleanup at startup
-cleanup_old_logs()
-
 file_handler = logging.FileHandler("jira_automation_runs.log")
 file_handler.setFormatter(
     logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
@@ -179,14 +176,15 @@ def delete_shortcut(username, name):
     return False
 
 @st.cache_data(ttl=3600)
-def get_all_jira_projects_cached():
-    """Fetches ALL projects from Jira API."""
-    return jira_utils.get_projects()
+def get_all_jira_projects_cached(config_tuple):
+    """Fetches ALL projects from Jira API using provided config."""
+    config = dict(config_tuple)
+    return jira_utils.get_projects(config)
 
 @st.cache_data(ttl=3600)
-def get_managed_projects_cached(username):
+def get_managed_projects_cached(username, config_tuple):
     """Returns only projects that are in the user's managed list."""
-    all_projects = get_all_jira_projects_cached()
+    all_projects = get_all_jira_projects_cached(config_tuple)
     managed_keys = load_managed_projects(username)
     if not all_projects:
         return []
@@ -198,76 +196,84 @@ def get_managed_projects_cached(username):
     return sorted(projects, key=lambda x: x.get('key', ''))
 
 @st.cache_data(ttl=600)
-def get_versions_cached(project_key):
-    return jira_utils.get_versions(project_key)
+def get_versions_cached(config_tuple, project_key):
+    """Fetches versions for a project using provided config."""
+    config = dict(config_tuple)
+    return jira_utils.get_versions(config, project_key)
 
-def get_versions_for_projects_cached(project_keys):
+def get_versions_for_projects_cached(config_tuple, project_keys):
+    """Fetches all version names for multiple projects."""
     if not project_keys:
         return []
     all_version_names = set()
     for key in project_keys:
-        versions = get_versions_cached(key)
+        versions = get_versions_cached(config_tuple, key)
         for v in versions:
             all_version_names.add(v.get('name'))
     return sorted(list(all_version_names))
 
 def save_config(url, email, token):
-    # Save to Supabase
-    if supabase:
+    # Save to user-specific settings in Supabase
+    username = st.session_state.get("username")
+    if supabase and username:
         try:
             config_data = {
                 "JIRA_BASE_URL": url,
                 "JIRA_EMAIL": email,
                 "JIRA_API_TOKEN": token
             }
-            supabase.table("app_config").upsert({
-                "id": "jira_config",
-                "content": config_data
+            # Upsert into user_settings table instead of global app_config
+            supabase.table("user_settings").upsert({
+                "username": username,
+                "jira_config": config_data
             }).execute()
+
+            # Update local session state
+            st.session_state.jira_config = {
+                "JIRA_BASE_URL": url,
+                "JIRA_EMAIL": email,
+                "JIRA_API_TOKEN": token,
+                "API_BASE": f"{url}/rest/api/3" if url else None,
+                "AUTH": (email, token) if email and token else None,
+                "HEADERS": {"Accept": "application/json", "Content-Type": "application/json"}
+            }
         except Exception as e:
             logger.error(f"Error saving Jira config to Supabase: {e}")
             st.error("Failed to save configuration to cloud.")
             return
 
-    # Update the jira_config module directly
-    jira_config.JIRA_BASE_URL = url
-    jira_config.JIRA_EMAIL = email
-    jira_config.JIRA_API_TOKEN = token
-    # Re-calculate dependent variables
-    jira_config.API_BASE = f"{url}/rest/api/3" if url else None
-    jira_config.AUTH = (email, token) if email and token else None
-
     # Clear the cache so it sees the new config
     st.cache_data.clear()
-    
-    # Success message and redirect
+
+    # Success message and redirect (Preserving your original message)
     st.success("✅ Configuration saved successfully! Redirecting...")
     time.sleep(1) 
-    
+
     # Update session state to move to Manage Projects
     st.session_state.current_page = "📂 Manage Projects"
 
     # Force a full script rerun
     st.rerun()
 
-def load_jira_config():
-    """Load Jira configuration from Supabase into the jira_config module."""
+def load_jira_config(username):
+    """Load private Jira configuration for a specific user from Supabase."""
     if supabase:
         try:
-            response = supabase.table("app_config").select("content").eq("id", "jira_config").execute()
+            response = supabase.table("user_settings").select("jira_config").eq("username", username).execute()
             if response.data:
-                content = response.data[0].get("content", {})
-                jira_config.JIRA_BASE_URL = content.get("JIRA_BASE_URL")
-                jira_config.JIRA_EMAIL = content.get("JIRA_EMAIL")
-                jira_config.JIRA_API_TOKEN = content.get("JIRA_API_TOKEN")
-                # Refresh derived values
-                jira_config.API_BASE = f"{jira_config.JIRA_BASE_URL}/rest/api/3" if jira_config.JIRA_BASE_URL else None
-                jira_config.AUTH = (jira_config.JIRA_EMAIL, jira_config.JIRA_API_TOKEN) if jira_config.JIRA_EMAIL and jira_config.JIRA_API_TOKEN else None
-                return True
+                content = response.data[0].get("jira_config", {})
+                if content:
+                    return {
+                        "JIRA_BASE_URL": content.get("JIRA_BASE_URL"),
+                        "JIRA_EMAIL": content.get("JIRA_EMAIL"),
+                        "JIRA_API_TOKEN": content.get("JIRA_API_TOKEN"),
+                        "API_BASE": f"{content.get('JIRA_BASE_URL')}/rest/api/3" if content.get('JIRA_BASE_URL') else None,
+                        "AUTH": (content.get('JIRA_EMAIL'), content.get('JIRA_API_TOKEN')) if content.get('JIRA_EMAIL') and content.get('JIRA_API_TOKEN') else None,
+                        "HEADERS": {"Accept": "application/json", "Content-Type": "application/json"}
+                    }
         except Exception as e:
-            logger.error(f"Error loading Jira config from Supabase: {e}")
-    return False
-
+            logger.error(f"Error loading Jira config from Supabase for {username}: {e}")
+    return {"JIRA_BASE_URL": None, "JIRA_EMAIL": None, "JIRA_API_TOKEN": None, "API_BASE": None, "AUTH": None, "HEADERS": None}
 def save_users_config(config):
     # Save to local file
     try:
@@ -294,13 +300,9 @@ def main():
     if 'current_page' not in st.session_state:
         st.session_state.current_page = "⚙️ Config"
 
-    # --- Cloud Sync Optimization ---
-    # Sync from cloud only once per browser session
-    if 'cloud_synced' not in st.session_state:
-        # 1. Load Jira Connection Config
-        load_jira_config()
-
-        # 2. Sync Users Auth Config
+    # --- Initial Cloud Sync (Authentication Only) ---
+    # Sync auth config from cloud only once per browser session
+    if 'auth_synced' not in st.session_state:
         if supabase:
             try:
                 response = supabase.table("app_config").select("content").eq("id", "users_config").execute()
@@ -309,9 +311,8 @@ def main():
                     with open('users.yaml', 'w') as file:
                         yaml.dump(cloud_config, file, default_flow_style=False)
             except Exception as e:
-                logger.error(f"Cloud config pull failed: {e}")
-        
-        st.session_state.cloud_synced = True
+                logger.error(f"Cloud auth config pull failed: {e}")
+        st.session_state.auth_synced = True
 
     if not os.path.exists('users.yaml'):
         initial_config = {
@@ -374,9 +375,22 @@ def main():
     st.sidebar.title(f"Welcome {name}")
     authenticator.logout('Logout', location='sidebar')
 
+    # Load User-Specific Jira Config if not already in session
+    if 'jira_config' not in st.session_state:
+        st.session_state.jira_config = load_jira_config(username)
+        # Run cleanup once at session start
+        cleanup_old_logs()
+
+    # Convert config to a hashable tuple for caching keys
+    config_tuple = tuple(st.session_state.jira_config.items())
+
     # --- Global Config Check ---
-    # Refresh config validity
-    is_config_valid = all([jira_config.JIRA_BASE_URL, jira_config.JIRA_EMAIL, jira_config.JIRA_API_TOKEN])
+    # Refresh config validity from session state
+    is_config_valid = all([
+        st.session_state.jira_config.get("JIRA_BASE_URL"), 
+        st.session_state.jira_config.get("JIRA_EMAIL"), 
+        st.session_state.jira_config.get("JIRA_API_TOKEN")
+    ])
     
     if not is_config_valid and st.session_state.get('current_page') != "⚙️ Config":
         st.warning("⚠️ **Action Required:** Jira configuration is incomplete. Please set up your credentials below.")
@@ -384,7 +398,7 @@ def main():
         st.rerun()
 
     # --- Shared Data ---
-    all_projects = get_managed_projects_cached(username) if is_config_valid else []
+    all_projects = get_managed_projects_cached(username, config_tuple) if is_config_valid else []
     project_keys = [p['key'] for p in all_projects]
 
     if 'selected_projects' not in st.session_state:
@@ -446,10 +460,10 @@ def main():
     # --- Page Content ---
     if page == "⚙️ Config":
         st.title("⚙️ Jira Configuration")
-        st.info("Update your Jira connection details here.")
-        url = st.text_input("Jira Base URL", value=jira_config.JIRA_BASE_URL or "")
-        email = st.text_input("Jira Email", value=jira_config.JIRA_EMAIL or "")
-        token = st.text_input("Jira API Token", value=jira_config.JIRA_API_TOKEN or "", type="password")
+        st.info("Update your private Jira connection details here.")
+        url = st.text_input("Jira Base URL", value=st.session_state.jira_config.get("JIRA_BASE_URL") or "")
+        email = st.text_input("Jira Email", value=st.session_state.jira_config.get("JIRA_EMAIL") or "")
+        token = st.text_input("Jira API Token", value=st.session_state.jira_config.get("JIRA_API_TOKEN") or "", type="password")
         if st.button("Save Configuration", type="primary"):
             save_config(url, email, token)
             st.rerun()
@@ -558,7 +572,7 @@ def main():
 
             # Add Project Section
             with st.expander("➕ Add Projects from Jira"):
-                all_jira_projects = get_all_jira_projects_cached()
+                all_jira_projects = get_all_jira_projects_cached(config_tuple)
                 if all_jira_projects:
                     managed_keys = set(load_managed_projects(username))
                     available_to_add = [p for p in all_jira_projects if p['key'] not in managed_keys]
@@ -641,13 +655,13 @@ def main():
                     
                     for p in current_selection:
                         with st.status(f"Processing {p}...", expanded=True) as status:
-                            existing_versions_list = get_versions_cached(p)
+                            existing_versions_list = get_versions_cached(config_tuple, p)
                             existing_names = {v["name"] for v in existing_versions_list}
                             for v in final_versions:
                                 if v in existing_names:
                                     st.info(f"{p}: {v} already exists.")
                                 else:
-                                    if jira_utils.create_version(p, v, start_date=start_date_str, release_date=end_date_str):
+                                    if jira_utils.create_version(st.session_state.jira_config, p, v, start_date=start_date_str, release_date=end_date_str):
                                         st.success(f"{p}: Created {v}")
                                         st.cache_data.clear()
                                     else:
@@ -670,11 +684,11 @@ def main():
             
             # Fetch versions and filter
             with st.spinner("Loading versions..."):
-                all_v_list = get_versions_for_projects_cached(current_selection)
+                all_v_list = get_versions_for_projects_cached(config_tuple, current_selection)
                 # Fetch full data to check status
                 all_v_details = []
                 for p in current_selection:
-                    all_v_details.extend(jira_utils.get_versions(p))
+                    all_v_details.extend(jira_utils.get_versions(st.session_state.jira_config, p))
                 
                 if show_released_only:
                     # Filter: Released=True, Archived=False
@@ -704,14 +718,14 @@ def main():
                 if rel_col.button("✅ Release Versions", use_container_width=True, type="primary"):
                     for p in current_selection:
                         with st.status(f"Releasing in {p}...", expanded=False) as status:
-                            proj_versions = get_versions_cached(p)
+                            proj_versions = get_versions_cached(config_tuple, p)
                             for v_name in target_versions:
                                 target = next((v for v in proj_versions if v["name"] == v_name), None)
                                 if target:
                                     if target.get("released"):
                                         st.info(f"{p}: {v_name} is already released.")
                                     else:
-                                        if jira_utils.release_version(target["id"], p, v_name):
+                                        if jira_utils.release_version(st.session_state.jira_config, target["id"], p, v_name):
                                             st.success(f"{p}: Released {v_name}")
                                             st.cache_data.clear()
                                         else:
@@ -724,14 +738,14 @@ def main():
                 if arc_col.button("📦 Archive Versions", use_container_width=True):
                     for p in current_selection:
                         with st.status(f"Archiving in {p}...", expanded=False) as status:
-                            proj_versions = get_versions_cached(p)
+                            proj_versions = get_versions_cached(config_tuple, p)
                             for v_name in target_versions:
                                 target = next((v for v in proj_versions if v["name"] == v_name), None)
                                 if target:
                                     if target.get("archived"):
                                         st.info(f"{p}: {v_name} is already archived.")
                                     else:
-                                        if jira_utils.archive_version(target["id"], p, v_name):
+                                        if jira_utils.archive_version(st.session_state.jira_config, target["id"], p, v_name):
                                             st.success(f"{p}: Archived {v_name}")
                                             st.cache_data.clear()
                                         else:
