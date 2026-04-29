@@ -358,6 +358,7 @@ def main():
         st.session_state.current_page = "⚙️ Config"
         st.rerun()
 
+    # --- Shared Data ---
     all_projects = get_managed_projects_cached(username, config_tuple) if is_config_valid else []
     project_keys = [p['key'] for p in all_projects]
 
@@ -370,6 +371,24 @@ def main():
 
     if 'selected_versions' not in st.session_state:
         st.session_state.selected_versions = []
+
+    # --- Dialogs ---
+    @st.dialog("💾 Save Workspace Shortcut")
+    def save_shortcut_dialog():
+        current_selection = sorted(list(st.session_state.selected_projects))
+        if not current_selection:
+            st.warning("No projects selected to save.")
+            return
+        st.write(f"Save these **{len(current_selection)} projects** as a quick-access shortcut.")
+        s_name = st.text_input("Shortcut Name", placeholder="e.g. Mobile Team, Project Alpha")
+        if st.button("Save Shortcut", type="primary", use_container_width=True):
+            if s_name:
+                if save_shortcut(username, s_name, current_selection, st.session_state.selected_versions):
+                    st.success(f"Saved shortcut: {s_name}")
+                    time.sleep(1)
+                    st.rerun()
+            else:
+                st.error("Please provide a name for the shortcut.")
 
     st.sidebar.title("🎯 Jira Manager")
     
@@ -394,7 +413,11 @@ def main():
     st.sidebar.divider()
     
     if is_config_valid:
-        st.sidebar.header("Quick Shortcuts")
+        col_side1, col_side2 = st.sidebar.columns([4, 1])
+        col_side1.header("Quick Shortcuts")
+        if col_side2.button("➕", help="Save current selection as shortcut"):
+            save_shortcut_dialog()
+            
         shortcuts = load_shortcuts(username)
         for s_name, data in shortcuts.items():
             col1, col2 = st.sidebar.columns([4, 1])
@@ -429,11 +452,11 @@ def main():
 
         with tab1:
             st.header("🎯 Select Active Projects")
-            current_selection = list(st.session_state.selected_projects)
+            current_selection = sorted(list(st.session_state.selected_projects))
             if not all_projects:
                 st.info("💡 **Getting Started:** You haven't tracked any projects yet. Go to the **'Manage Tracked Projects'** tab to add some from your Jira account.")
             elif current_selection:
-                st.success(f"✅ **{len(current_selection)} Projects Active:** {', '.join(sorted(current_selection))}")
+                st.success(f"✅ **{len(current_selection)} Projects Active:** {', '.join(current_selection)}")
 
             if all_projects:
                 col_ctrl1, col_ctrl2, _ = st.columns([1, 1, 4])
@@ -461,20 +484,9 @@ def main():
 
                 if current_selection:
                     st.divider()
-                    @st.dialog("💾 Save Workspace Shortcut")
-                    def save_shortcut_dialog():
-                        st.write(f"Save these **{len(current_selection)} projects** as a quick-access shortcut.")
-                        s_name = st.text_input("Shortcut Name", placeholder="e.g. Mobile Team, Project Alpha")
-                        if st.button("Save Shortcut", type="primary", use_container_width=True):
-                            if s_name:
-                                if save_shortcut(username, s_name, current_selection, st.session_state.selected_versions):
-                                    st.success(f"Saved shortcut: {s_name}")
-                                    time.sleep(1)
-                                    st.rerun()
-                            else:
-                                st.error("Please provide a name for the shortcut.")
-                    if st.button("💾 Save Selection as Shortcut", use_container_width=True):
-                        save_shortcut_dialog()
+                    if st.button("🚀 Go to: Manage Versions", use_container_width=True, type="primary"):
+                        st.session_state.current_page = "🚀 Manage Versions"
+                        st.rerun()
 
         with tab2:
             st.subheader("➕ Add Projects from Jira")
