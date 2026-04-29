@@ -263,7 +263,7 @@ def save_users_config(config):
 
 def main():
     if 'current_page' not in st.session_state:
-        st.session_state.current_page = "📂 Project Management"
+        st.session_state.current_page = "📂 Manage Projects"
 
     if 'auth_synced' not in st.session_state:
         if supabase:
@@ -354,7 +354,7 @@ def main():
     st.sidebar.title("🎯 Jira Manager")
     
     if is_config_valid:
-        nav_options = ["📂 Project Management", "🚀 Version Management", "⚙️ Config"]
+        nav_options = ["📂 Manage Projects", "🚀 Manage Versions", "⚙️ Config"]
     else:
         nav_options = ["⚙️ Config"]
     
@@ -384,7 +384,7 @@ def main():
                 st.session_state.selected_versions = data.get("versions", [])
                 for k in project_keys:
                     st.session_state[f"cb_{k}"] = k in st.session_state.selected_projects
-                st.session_state.current_page = "📂 Project Management"
+                st.session_state.current_page = "📂 Manage Projects"
                 st.rerun()
             if col2.button("🗑️", key=f"del_{s_name}"):
                 if delete_shortcut(username, s_name):
@@ -400,11 +400,11 @@ def main():
             if save_jira_config(username, url, email, token):
                 st.success("✅ Configuration saved successfully! Redirecting...")
                 time.sleep(1) 
-                st.session_state.current_page = "📂 Project Management"
+                st.session_state.current_page = "📂 Manage Projects"
                 st.rerun()
 
-    elif page == "📂 Project Management":
-        st.title("📂 Project Management")
+    elif page == "📂 Manage Projects":
+        st.title("📂 Manage Projects")
         tab1, tab2 = st.tabs(["🎯 Active Workspace", "⚙️ Manage Tracked Projects"])
 
         with tab1:
@@ -497,8 +497,8 @@ def main():
                             time.sleep(1)
                             st.rerun()
 
-    elif page == "🚀 Version Management":
-        st.title("🚀 Version Management")
+    elif page == "🚀 Manage Versions":
+        st.title("🚀 Manage Versions")
         tab_v1, tab_v2, tab_v3 = st.tabs(["🚀 Create Versions", "📦 Release/Archive", "✏️ Rename"])
 
         current_selection_list = sorted(list(st.session_state.selected_projects))
