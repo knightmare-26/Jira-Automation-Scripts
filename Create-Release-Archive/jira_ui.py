@@ -549,21 +549,18 @@ def main():
                 st.warning("⚠️ No projects selected. Please go to the **Active Workspace** tab to select projects.")
             else:
                 st.write(f"**Active Workspace:** {', '.join(current_selection_list)}")
-                st.subheader("1. Define Versions")
                 new_versions_raw = st.text_input("Enter Version Names (comma separated)", placeholder="e.g. 2026Train1, 2026Train2", key="new_versions_input")
                 final_versions = [v.strip() for v in new_versions_raw.split(",") if v.strip()]
                 col_date1, col_date2 = st.columns(2)
                 start_date = col_date1.date_input("Start Date (Optional)", value=None, key="start_date_input")
                 end_date = col_date2.date_input("Release Date (Optional)", value=None, key="end_date_input")
+                
                 if final_versions:
+                    st.divider()
                     st.write(f"**Planned Versions:** {', '.join(final_versions)}")
                     st.session_state.selected_versions = final_versions
 
-                st.subheader("2. Execution")
-                if st.button("🚀 Create Versions Across Active Projects", use_container_width=True, type="primary"):
-                    if not final_versions:
-                        st.error("Please define at least one version name.")
-                    else:
+                    if st.button("🚀 Create Versions Across Active Projects", use_container_width=True, type="primary"):
                         start_date_str = start_date.isoformat() if start_date else None
                         end_date_str = end_date.isoformat() if end_date else None
                         for p in current_selection_list:
@@ -588,7 +585,6 @@ def main():
                 st.warning("⚠️ No projects selected. Please go to the **Active Workspace** tab to select projects.")
             else:
                 st.write(f"**Active Workspace:** {', '.join(current_selection_list)}")
-                st.subheader("1. Select Fix Versions")
                 show_released_only = st.checkbox("Show only Released versions (not yet archived)", key="show_released_only")
                 with st.spinner("Loading versions..."):
                     all_v_details = []
@@ -599,12 +595,12 @@ def main():
                     else:
                         available_versions = [v['name'] for v in all_v_details if not v.get("released") and not v.get("archived")]
                     available_versions = sorted(list(set(available_versions)))
-                target_versions = st.multiselect("Fix Versions", options=available_versions, key="version_multiselect_v2")
+                
+                target_versions = st.multiselect("Select Fix Versions", options=available_versions, key="version_multiselect_v2")
                 st.session_state.selected_versions = target_versions
 
                 if target_versions:
                     st.divider()
-                    st.subheader("2. Actions")
                     st.write(f"Selected Fix Versions: **{', '.join(target_versions)}**")
                     st.warning("These actions will be applied to all selected versions across all active projects.")
                     rel_col, arc_col = st.columns(2)
@@ -627,6 +623,7 @@ def main():
                                         st.warning(f"{p}: Version {v_name} not found.")
                                 status.update(label=f"Completed {p}", state="complete")
                         st.success("🎉 All selected versions released successfully!")
+                    
                     if arc_col.button("📦 Archive Versions", use_container_width=True):
                         for p in current_selection_list:
                             with st.status(f"Archiving in {p}...", expanded=False) as status:
@@ -653,18 +650,18 @@ def main():
                 st.warning("⚠️ No projects selected. Please go to the **Active Workspace** tab to select projects.")
             else:
                 st.write(f"**Active Workspace:** {', '.join(current_selection_list)}")
-                st.subheader("1. Select Versions to Rename")
                 with st.spinner("Loading versions..."):
                     all_v_details = []
                     for p in current_selection_list:
                         all_v_details.extend(jira_utils.get_versions(st.session_state.jira_config, p))
                     available_versions = sorted(list(set([v['name'] for v in all_v_details if not v.get("archived")])))
-                target_versions_rename = st.multiselect("Fix Versions to Rename", options=available_versions, key="version_multiselect_v3")
-                new_version_name = st.text_input("New Version Name", placeholder="e.g. 2026Train1-Final")
-                if st.button("✏️ Rename Versions", use_container_width=True, type="primary"):
-                    if not target_versions_rename or not new_version_name:
-                        st.error("Please select versions and provide a new name.")
-                    else:
+                
+                target_versions_rename = st.multiselect("Select Versions to Rename", options=available_versions, key="version_multiselect_v3")
+                new_version_name = st.text_input("Enter New Version Name", placeholder="e.g. 2026Train1-Final")
+                
+                if target_versions_rename and new_version_name:
+                    st.divider()
+                    if st.button("✏️ Rename Versions", use_container_width=True, type="primary"):
                         for p in current_selection_list:
                             with st.status(f"Renaming in {p}...", expanded=False) as status:
                                 proj_versions = get_versions_cached(config_tuple, p)
