@@ -312,9 +312,16 @@ def main():
                 st.error('Username/password is incorrect')
         
         with tab_signup:
+            # CSS to hide the 'Name' field in the registration form
+            st.markdown("""
+                <style>
+                div[data-testid="stTextInput"]:has(label:contains("Name")) {
+                    display: none;
+                }
+                </style>
+                """, unsafe_allow_html=True)
             try:
-                # register_user handles Username, Email, and Password by default. 
-                # We set preauthorization to None if not used to keep it simple.
+                # register_user handles Username, Email, and Password by default.
                 if authenticator.register_user(location='main'):
                     st.success('User registered successfully! You can now log in.')
                     save_users_config(config) 
