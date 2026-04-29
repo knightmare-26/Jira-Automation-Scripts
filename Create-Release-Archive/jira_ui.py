@@ -296,6 +296,14 @@ def main():
     )
 
     if st.session_state.get("authentication_status") != True:
+        # Clear user-specific state when not authenticated to ensure a fresh start on login
+        st.session_state.selected_projects = set()
+        st.session_state.selected_versions = []
+        for key in list(st.session_state.keys()):
+            if key.startswith("cb_"):
+                del st.session_state[key]
+        st.session_state.last_user = None
+
         tab_login, tab_signup = st.tabs(["🔐 Login", "📝 Sign Up"])
         with tab_login:
             try:
@@ -318,7 +326,19 @@ def main():
 
     name = st.session_state["name"]
     username = st.session_state["username"]
+
+    # --- Session Reset on User Change ---
+    if 'last_user' not in st.session_state or st.session_state.last_user != username:
+        st.session_state.selected_projects = set()
+        st.session_state.selected_versions = []
+        # Clear dynamic checkbox keys
+        for key in list(st.session_state.keys()):
+            if key.startswith("cb_"):
+                del st.session_state[key]
+        st.session_state.last_user = username
+
     st.sidebar.title(f"Welcome {name}")
+
     authenticator.logout('Logout', location='sidebar')
 
     if 'jira_config' not in st.session_state:
