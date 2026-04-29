@@ -298,23 +298,23 @@ def main():
         config['cookie']['expiry_days']
     )
 
-    # Always call login to handle cookie-based re-authentication
-    # In 'main' location, it renders the form if not logged in
-    authenticator.login(location='main')
-
     if st.session_state.get("authentication_status") != True:
-        # Only clear state when explicitly not authenticated or failed login
-        if st.session_state.get("authentication_status") == False:
-            st.error('Username/password is incorrect')
+        tab_login, tab_signup = st.tabs(["🔐 Sign In", "📝 Sign Up"])
         
-        tab_login, tab_signup = st.tabs(["🔐 Login", "📝 Sign Up"])
         with tab_login:
-            # We already called login above, so we just show info here if needed
-            if st.session_state.get("authentication_status") == None:
-                st.info("Please log in to continue.")
+            try:
+                # This renders the login form inside the tab
+                authenticator.login(location='main')
+            except Exception as e:
+                st.error(f"Login widget error: {e}")
+            
+            if st.session_state.get("authentication_status") == False:
+                st.error('Username/password is incorrect')
         
         with tab_signup:
             try:
+                # register_user handles Username, Email, and Password by default. 
+                # We set preauthorization to None if not used to keep it simple.
                 if authenticator.register_user(location='main'):
                     st.success('User registered successfully! You can now log in.')
                     save_users_config(config) 
