@@ -412,7 +412,7 @@ def main():
 
     if is_config_valid:
         st.sidebar.divider()
-        col_side1, col_side2 = st.sidebar.columns([5, 2])
+        col_side1, col_side2 = st.sidebar.columns([5, 2], vertical_alignment="center")
         with col_side1:
             st.markdown("<h2 style='margin:0; text-align: center; font-size: 22px;'>Quick Shortcuts</h2>", unsafe_allow_html=True)
         with col_side2:
