@@ -280,13 +280,16 @@ def main():
     if not os.path.exists('users.yaml'):
         initial_config = {
             'credentials': {'usernames': {}},
-            'cookie': {'expiry_days': 30, 'key': 'some_signature_key', 'name': 'jira_manager_cookie'},
+            'cookie': {'expiry_days': 0.0208, 'key': 'some_signature_key', 'name': 'jira_manager_cookie'},
             'preauthorized': {'emails': []}
         }
         save_users_config(initial_config)
 
     with open('users.yaml') as file:
         config = yaml.load(file, Loader=SafeLoader)
+
+    # Ensure the config has the 30-minute expiry
+    config['cookie']['expiry_days'] = 0.0208
 
     authenticator = stauth.Authenticate(
         config['credentials'],
@@ -295,25 +298,21 @@ def main():
         config['cookie']['expiry_days']
     )
 
-    if st.session_state.get("authentication_status") != True:
-        # Clear user-specific state when not authenticated to ensure a fresh start on login
-        st.session_state.selected_projects = set()
-        st.session_state.selected_versions = []
-        for key in list(st.session_state.keys()):
-            if key.startswith("cb_"):
-                del st.session_state[key]
-        st.session_state.last_user = None
+    # Always call login to handle cookie-based re-authentication
+    # In 'main' location, it renders the form if not logged in
+    authenticator.login(location='main')
 
+    if st.session_state.get("authentication_status") != True:
+        # Only clear state when explicitly not authenticated or failed login
+        if st.session_state.get("authentication_status") == False:
+            st.error('Username/password is incorrect')
+        
         tab_login, tab_signup = st.tabs(["🔐 Login", "📝 Sign Up"])
         with tab_login:
-            try:
-                authenticator.login(location='main')
-            except Exception as e:
-                st.error(f"Login widget error: {e}")
-            if st.session_state.get("authentication_status") == False:
-                st.error('Username/password is incorrect')
-            elif st.session_state.get("authentication_status") == None:
+            # We already called login above, so we just show info here if needed
+            if st.session_state.get("authentication_status") == None:
                 st.info("Please log in to continue.")
+        
         with tab_signup:
             try:
                 if authenticator.register_user(location='main'):
@@ -321,6 +320,7 @@ def main():
                     save_users_config(config) 
             except Exception as e:
                 st.error(f"Registration failed: {e}")
+        
         if st.session_state.get("authentication_status") != True:
             return
 
