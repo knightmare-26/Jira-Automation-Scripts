@@ -414,7 +414,7 @@ def main():
         st.sidebar.divider()
         col_side1, col_side2 = st.sidebar.columns([5, 2])
         with col_side1:
-            st.markdown("<h3 style='margin:0; text-align: center;'>Shortcuts</h3>", unsafe_allow_html=True)
+            st.markdown("<h3 style='margin:0; text-align: center;'>Quick Shortcuts</h3>", unsafe_allow_html=True)
         with col_side2:
             if st.button("➕", help="Save current selection as shortcut", type="primary", use_container_width=True):
                 save_shortcut_dialog()
