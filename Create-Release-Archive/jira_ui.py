@@ -406,7 +406,7 @@ def main():
     
     # Define available pages
     if is_config_valid:
-        nav_options = ["📂 Manage Projects", "🚀 Create Versions", "📦 Release/Archive", "⚙️ Config"]
+        nav_options = ["📂 Manage Projects", "⚙️ Config"]
     else:
         nav_options = ["⚙️ Config"]
     
@@ -463,7 +463,7 @@ def main():
     elif page == "📂 Manage Projects":
         st.title("📂 Manage Projects")
         
-        tab1, tab2 = st.tabs(["🎯 Active Workspace", "⚙️ Manage Tracked Projects"])
+        tab1, tab2, tab3, tab4 = st.tabs(["🎯 Active Workspace", "🚀 Create Versions", "📦 Release/Archive/Rename", "⚙️ Manage Tracked Projects"])
 
         with tab1:
             st.header("🎯 Select Active Projects")
@@ -530,6 +530,167 @@ def main():
                         save_shortcut_dialog()
 
         with tab2:
+            st.header("🚀 Create New Versions")
+            current_selection_list = sorted(list(st.session_state.selected_projects))
+            
+            if not current_selection_list:
+                st.warning("⚠️ No projects selected. Please go to the **Active Workspace** tab to select projects.")
+            else:
+                st.write(f"**Active Workspace:** {', '.join(current_selection_list)}")
+                
+                st.subheader("1. Define Versions")
+                new_versions_raw = st.text_input("Enter Version Names (comma separated)", placeholder="e.g. 2026Train1, 2026Train2", key="new_versions_input")
+                final_versions = [v.strip() for v in new_versions_raw.split(",") if v.strip()]
+
+                col_date1, col_date2 = st.columns(2)
+                start_date = col_date1.date_input("Start Date (Optional)", value=None, key="start_date_input")
+                end_date = col_date2.date_input("Release Date (Optional)", value=None, key="end_date_input")
+
+                if final_versions:
+                    st.write(f"**Planned Versions:** {', '.join(final_versions)}")
+                    st.session_state.selected_versions = final_versions
+
+                st.subheader("2. Execution")
+                if st.button("🚀 Create Versions Across Active Projects", use_container_width=True, type="primary"):
+                    if not final_versions:
+                        st.error("Please define at least one version name.")
+                    else:
+                        start_date_str = start_date.isoformat() if start_date else None
+                        end_date_str = end_date.isoformat() if end_date else None
+                        
+                        for p in current_selection_list:
+                            with st.status(f"Processing {p}...", expanded=True) as status:
+                                existing_versions_list = get_versions_cached(config_tuple, p)
+                                existing_names = {v["name"] for v in existing_versions_list}
+                                for v in final_versions:
+                                    if v in existing_names:
+                                        st.info(f"{p}: {v} already exists.")
+                                    else:
+                                        if jira_utils.create_version(st.session_state.jira_config, p, v, start_date=start_date_str, release_date=end_date_str):
+                                            st.success(f"{p}: Created {v}")
+                                            st.cache_data.clear()
+                                        else:
+                                            st.error(f"{p}: Failed to create {v}")
+                                status.update(label=f"Finished {p}", state="complete")
+                        st.success("🎉 All versions created successfully across selected projects!")
+
+        with tab3:
+            st.header("📦 Release, Archive & Rename")
+            current_selection_list = sorted(list(st.session_state.selected_projects))
+            
+            if not current_selection_list:
+                st.warning("⚠️ No projects selected. Please go to the **Active Workspace** tab to select projects.")
+            else:
+                st.write(f"**Active Workspace:** {', '.join(current_selection_list)}")
+
+                st.subheader("1. Select Fix Versions")
+                # 1. Version filtering options
+                show_released_only = st.checkbox("Show only Released versions (not yet archived)", key="show_released_only")
+                
+                # Fetch versions and filter
+                with st.spinner("Loading versions..."):
+                    all_v_list = get_versions_for_projects_cached(config_tuple, current_selection_list)
+                    # Fetch full data to check status
+                    all_v_details = []
+                    for p in current_selection_list:
+                        all_v_details.extend(jira_utils.get_versions(st.session_state.jira_config, p))
+                    
+                    if show_released_only:
+                        # Filter: Released=True, Archived=False
+                        available_versions = [v['name'] for v in all_v_details if v.get("released") and not v.get("archived")]
+                    else:
+                        # Filter: Released=False AND Archived=False
+                        available_versions = [v['name'] for v in all_v_details if not v.get("released") and not v.get("archived")]
+                    
+                    available_versions = sorted(list(set(available_versions)))
+                
+                target_versions = st.multiselect(
+                    "Fix Versions",
+                    options=available_versions,
+                    key="version_multiselect_tab3"
+                )
+                
+                st.session_state.selected_versions = target_versions
+
+                if target_versions:
+                    st.divider()
+                    st.subheader("2. Actions")
+                    st.write(f"Selected Fix Versions: **{', '.join(target_versions)}**")
+                    
+                    action_tab1, action_tab2 = st.tabs(["🚀 Release/Archive", "✏️ Rename"])
+                    
+                    with action_tab1:
+                        st.warning("These actions will be applied to all selected versions across all active projects.")
+                        rel_col, arc_col = st.columns(2)
+                        
+                        if rel_col.button("✅ Release Versions", use_container_width=True, type="primary"):
+                            for p in current_selection_list:
+                                with st.status(f"Releasing in {p}...", expanded=False) as status:
+                                    proj_versions = get_versions_cached(config_tuple, p)
+                                    for v_name in target_versions:
+                                        target = next((v for v in proj_versions if v["name"] == v_name), None)
+                                        if target:
+                                            if target.get("released"):
+                                                st.info(f"{p}: {v_name} is already released.")
+                                            else:
+                                                if jira_utils.release_version(st.session_state.jira_config, target["id"], p, v_name):
+                                                    st.success(f"{p}: Released {v_name}")
+                                                    st.cache_data.clear()
+                                                else:
+                                                    st.error(f"{p}: Failed to release {v_name}")
+                                        else:
+                                            st.warning(f"{p}: Version {v_name} not found.")
+                                    status.update(label=f"Completed {p}", state="complete")
+                            st.success("🎉 All selected versions released successfully!")
+
+                        if arc_col.button("📦 Archive Versions", use_container_width=True):
+                            for p in current_selection_list:
+                                with st.status(f"Archiving in {p}...", expanded=False) as status:
+                                    proj_versions = get_versions_cached(config_tuple, p)
+                                    for v_name in target_versions:
+                                        target = next((v for v in proj_versions if v["name"] == v_name), None)
+                                        if target:
+                                            if target.get("archived"):
+                                                st.info(f"{p}: {v_name} is already archived.")
+                                            else:
+                                                if jira_utils.archive_version(st.session_state.jira_config, target["id"], p, v_name):
+                                                    st.success(f"{p}: Archived {v_name}")
+                                                    st.cache_data.clear()
+                                                else:
+                                                    st.error(f"{p}: Failed to archive {v_name}")
+                                        else:
+                                            st.warning(f"{p}: Version {v_name} not found.")
+                                    status.update(label=f"Completed {p}", state="complete")
+                            st.success("🎉 All selected versions archived successfully!")
+
+                    with action_tab2:
+                        st.subheader("✏️ Rename Selected Versions")
+                        if len(target_versions) > 1:
+                            st.warning("⚠️ You have selected multiple versions. The new name will be applied to ALL of them across ALL active projects.")
+                        
+                        new_version_name = st.text_input("New Version Name", placeholder="e.g. 2026Train1-Final")
+                        
+                        if st.button("✏️ Rename Versions", use_container_width=True, type="primary"):
+                            if not new_version_name:
+                                st.error("Please provide a new name for the version(s).")
+                            else:
+                                for p in current_selection_list:
+                                    with st.status(f"Renaming in {p}...", expanded=False) as status:
+                                        proj_versions = get_versions_cached(config_tuple, p)
+                                        for v_name in target_versions:
+                                            target = next((v for v in proj_versions if v["name"] == v_name), None)
+                                            if target:
+                                                if jira_utils.rename_version(st.session_state.jira_config, target["id"], p, v_name, new_version_name):
+                                                    st.success(f"{p}: Renamed {v_name} to {new_version_name}")
+                                                    st.cache_data.clear()
+                                                else:
+                                                    st.error(f"{p}: Failed to rename {v_name}")
+                                            else:
+                                                st.warning(f"{p}: Version {v_name} not found.")
+                                        status.update(label=f"Completed {p}", state="complete")
+                                st.success("🎉 All selected versions renamed successfully!")
+
+        with tab4:
             # Add Project Section
             st.subheader("➕ Add Projects from Jira")
             all_jira_projects = get_all_jira_projects_cached(config_tuple)
@@ -575,149 +736,6 @@ def main():
                             st.cache_data.clear()
                             time.sleep(1)
                             st.rerun()
-
-        # --- Navigation Footer ---
-        if current_selection:
-            st.divider()
-            st.write("### Next Steps")
-            col_nav1, col_nav2 = st.columns(2)
-            if col_nav1.button("Go to: Create Versions 🚀", use_container_width=True):
-                st.session_state.current_page = "🚀 Create Versions"
-                st.rerun()
-            if col_nav2.button("Go to: Release/Archive 📦", use_container_width=True):
-                st.session_state.current_page = "📦 Release/Archive"
-                st.rerun()
-
-    elif page == "🚀 Create Versions":
-        st.title("🚀 Create New Versions")
-        current_selection = sorted(list(st.session_state.selected_projects))
-        
-        if not current_selection:
-            st.warning("⚠️ No projects selected. Please go to the **Manage Projects** page to select projects.")
-        else:
-            st.write(f"**Active Workspace:** {', '.join(current_selection)}")
-            
-            st.header("1. Define Versions")
-            new_versions_raw = st.text_input("Enter Version Names (comma separated)", placeholder="e.g. 2026Train1, 2026Train2")
-            final_versions = [v.strip() for v in new_versions_raw.split(",") if v.strip()]
-
-            col_date1, col_date2 = st.columns(2)
-            start_date = col_date1.date_input("Start Date (Optional)", value=None)
-            end_date = col_date2.date_input("Release Date (Optional)", value=None)
-
-            if final_versions:
-                st.write(f"**Planned Versions:** {', '.join(final_versions)}")
-                st.session_state.selected_versions = final_versions
-
-            st.header("2. Execution")
-            if st.button("🚀 Create Versions Across Active Projects", use_container_width=True, type="primary"):
-                if not final_versions:
-                    st.error("Please define at least one version name.")
-                else:
-                    start_date_str = start_date.isoformat() if start_date else None
-                    end_date_str = end_date.isoformat() if end_date else None
-                    
-                    for p in current_selection:
-                        with st.status(f"Processing {p}...", expanded=True) as status:
-                            existing_versions_list = get_versions_cached(config_tuple, p)
-                            existing_names = {v["name"] for v in existing_versions_list}
-                            for v in final_versions:
-                                if v in existing_names:
-                                    st.info(f"{p}: {v} already exists.")
-                                else:
-                                    if jira_utils.create_version(st.session_state.jira_config, p, v, start_date=start_date_str, release_date=end_date_str):
-                                        st.success(f"{p}: Created {v}")
-                                        st.cache_data.clear()
-                                    else:
-                                        st.error(f"{p}: Failed to create {v}")
-                            status.update(label=f"Finished {p}", state="complete")
-                    st.success("🎉 All versions created successfully across selected projects!")
-
-    elif page == "📦 Release/Archive":
-        st.title("📦 Release & Archive Versions")
-        current_selection = sorted(list(st.session_state.selected_projects))
-        
-        if not current_selection:
-            st.warning("⚠️ No projects selected. Please go to the **Manage Projects** page to select projects.")
-        else:
-            st.write(f"**Active Workspace:** {', '.join(current_selection)}")
-
-            st.header("1. Select Fix Versions")
-            # 1. Version filtering options
-            show_released_only = st.checkbox("Show only Released versions (not yet archived)")
-            
-            # Fetch versions and filter
-            with st.spinner("Loading versions..."):
-                all_v_list = get_versions_for_projects_cached(config_tuple, current_selection)
-                # Fetch full data to check status
-                all_v_details = []
-                for p in current_selection:
-                    all_v_details.extend(jira_utils.get_versions(st.session_state.jira_config, p))
-                
-                if show_released_only:
-                    # Filter: Released=True, Archived=False
-                    available_versions = [v['name'] for v in all_v_details if v.get("released") and not v.get("archived")]
-                else:
-                    # Filter: Released=False AND Archived=False
-                    available_versions = [v['name'] for v in all_v_details if not v.get("released") and not v.get("archived")]
-                
-                available_versions = sorted(list(set(available_versions)))
-            
-            target_versions = st.multiselect(
-                "Fix Versions",
-                options=available_versions,
-                key="version_multiselect"
-            )
-            
-            st.session_state.selected_versions = target_versions
-
-            if target_versions:
-                st.divider()
-                st.header("2. Actions")
-                st.write(f"Selected Fix Versions: **{', '.join(target_versions)}**")
-                st.warning("These actions will be applied to all selected versions across all active projects.")
-                
-                rel_col, arc_col = st.columns(2)
-                
-                if rel_col.button("✅ Release Versions", use_container_width=True, type="primary"):
-                    for p in current_selection:
-                        with st.status(f"Releasing in {p}...", expanded=False) as status:
-                            proj_versions = get_versions_cached(config_tuple, p)
-                            for v_name in target_versions:
-                                target = next((v for v in proj_versions if v["name"] == v_name), None)
-                                if target:
-                                    if target.get("released"):
-                                        st.info(f"{p}: {v_name} is already released.")
-                                    else:
-                                        if jira_utils.release_version(st.session_state.jira_config, target["id"], p, v_name):
-                                            st.success(f"{p}: Released {v_name}")
-                                            st.cache_data.clear()
-                                        else:
-                                            st.error(f"{p}: Failed to release {v_name}")
-                                else:
-                                    st.warning(f"{p}: Version {v_name} not found.")
-                            status.update(label=f"Completed {p}", state="complete")
-                    st.success("🎉 All selected versions released successfully!")
-
-                if arc_col.button("📦 Archive Versions", use_container_width=True):
-                    for p in current_selection:
-                        with st.status(f"Archiving in {p}...", expanded=False) as status:
-                            proj_versions = get_versions_cached(config_tuple, p)
-                            for v_name in target_versions:
-                                target = next((v for v in proj_versions if v["name"] == v_name), None)
-                                if target:
-                                    if target.get("archived"):
-                                        st.info(f"{p}: {v_name} is already archived.")
-                                    else:
-                                        if jira_utils.archive_version(st.session_state.jira_config, target["id"], p, v_name):
-                                            st.success(f"{p}: Archived {v_name}")
-                                            st.cache_data.clear()
-                                        else:
-                                            st.error(f"{p}: Failed to archive {v_name}")
-                                else:
-                                    st.warning(f"{p}: Version {v_name} not found.")
-                            status.update(label=f"Completed {p}", state="complete")
-                    st.success("🎉 All selected versions archived successfully!")
 
 if __name__ == "__main__":
     main()
