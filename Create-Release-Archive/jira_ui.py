@@ -410,13 +410,14 @@ def main():
         st.session_state.current_page = page
         st.rerun()
 
-    st.sidebar.divider()
-    
     if is_config_valid:
-        col_side1, col_side2 = st.sidebar.columns([4, 1])
-        col_side1.header("Quick Shortcuts")
-        if col_side2.button("➕", help="Save current selection as shortcut"):
-            save_shortcut_dialog()
+        st.sidebar.divider()
+        col_side1, col_side2 = st.sidebar.columns([5, 2])
+        with col_side1:
+            st.markdown("<h3 style='margin:0; text-align: center;'>Shortcuts</h3>", unsafe_allow_html=True)
+        with col_side2:
+            if st.button("➕", help="Save current selection as shortcut", type="primary", use_container_width=True):
+                save_shortcut_dialog()
             
         shortcuts = load_shortcuts(username)
         for s_name, data in shortcuts.items():
