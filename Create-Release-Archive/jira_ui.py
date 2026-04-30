@@ -276,6 +276,7 @@ def save_jira_config(username, url, email, token):
     return False
 
 def save_users_config(config):
+    """Save user configuration locally and granularly to Supabase."""
     try:
         with open('users.yaml', 'w') as file:
             yaml.dump(config, file, default_flow_style=False)
@@ -285,9 +286,20 @@ def save_users_config(config):
     
     if supabase:
         try:
+            # Phase 3: Save individual user records instead of one giant file
+            # This prevents User A from overwriting User B's new registration
+            usernames = config.get('credentials', {}).get('usernames', {})
+            for username, user_data in usernames.items():
+                supabase.table("app_config").upsert({
+                    "id": f"auth_user_{username}",
+                    "content": user_data
+                }).execute()
+            
+            # Also save the non-user config parts (cookie, etc)
+            base_config = {k: v for k, v in config.items() if k != 'credentials'}
             supabase.table("app_config").upsert({
-                "id": "users_config",
-                "content": config
+                "id": "auth_base_config",
+                "content": base_config
             }).execute()
         except Exception as e:
             logger.error(f"Error syncing users to cloud: {e}")
@@ -297,14 +309,44 @@ def main():
     if 'current_page' not in st.session_state:
         st.session_state.current_page = "📂 Manage Projects"
 
+    # --- Initial Cloud Sync (Granular) ---
     if 'auth_synced' not in st.session_state:
         if supabase:
             try:
-                response = supabase.table("app_config").select("content").eq("id", "users_config").execute()
-                if response.data:
-                    cloud_config = response.data[0].get("content")
+                # 1. Load base config (cookies, etc)
+                response_base = supabase.table("app_config").select("content").eq("id", "auth_base_config").execute()
+                
+                # 2. Load all individual users
+                response_users = supabase.table("app_config").select("id", "content").filter("id", "like", "auth_user_%").execute()
+                
+                if response_users.data:
+                    # Reconstruct the full config object
+                    new_config = {
+                        'credentials': {'usernames': {}},
+                        'cookie': {'expiry_days': 0.0208, 'key': 'some_signature_key', 'name': 'jira_manager_cookie'},
+                        'preauthorized': {'emails': []}
+                    }
+                    
+                    if response_base.data:
+                        new_config.update(response_base.data[0].get("content", {}))
+                    
+                    for row in response_users.data:
+                        username = row['id'].replace("auth_user_", "")
+                        new_config['credentials']['usernames'][username] = row['content']
+                    
                     with open('users.yaml', 'w') as file:
-                        yaml.dump(cloud_config, file, default_flow_style=False)
+                        yaml.dump(new_config, file, default_flow_style=False)
+                
+                # Backward compatibility: Check for old monolithic file if no granular users found
+                elif not response_users.data:
+                    response_old = supabase.table("app_config").select("content").eq("id", "users_config").execute()
+                    if response_old.data:
+                        cloud_config = response_old.data[0].get("content")
+                        with open('users.yaml', 'w') as file:
+                            yaml.dump(cloud_config, file, default_flow_style=False)
+                        # Immediately migrate to granular format
+                        save_users_config(cloud_config)
+
             except Exception as e:
                 logger.error(f"Cloud auth config pull failed: {e}")
         st.session_state.auth_synced = True
@@ -398,6 +440,7 @@ def main():
         st.session_state.current_page = "⚙️ Config"
         st.rerun()
 
+    # --- Shared Data ---
     all_projects = get_managed_projects_cached(username, config_tuple) if is_config_valid else []
     project_keys = [p['key'] for p in all_projects]
 
