@@ -12,6 +12,25 @@ from yaml.loader import SafeLoader
 from supabase import create_client, Client
 import time
 from datetime import datetime, timedelta
+from cryptography.fernet import Fernet
+
+# Encryption Setup
+ENCRYPTION_KEY = st.secrets.get("ENCRYPTION_KEY")
+cipher_suite = Fernet(ENCRYPTION_KEY.encode()) if ENCRYPTION_KEY else None
+
+def encrypt_data(data):
+    if not cipher_suite or not data:
+        return data
+    return cipher_suite.encrypt(data.encode()).decode()
+
+def decrypt_data(encrypted_data):
+    if not cipher_suite or not encrypted_data:
+        return encrypted_data
+    try:
+        return cipher_suite.decrypt(encrypted_data.encode()).decode()
+    except Exception:
+        # Fallback for old plaintext data (Phase 1 backward compatibility)
+        return encrypted_data
 
 # Supabase Config (These should ideally be in secrets/config)
 SUPABASE_URL = st.secrets.get("SUPABASE_URL", "")
@@ -165,33 +184,38 @@ def delete_shortcut(username, name):
     return False
 
 @st.cache_data(ttl=3600)
-def get_all_jira_projects_cached(config_tuple):
+def get_all_jira_projects_cached(username, config_tuple):
+    """Fetches ALL projects from Jira API using provided config."""
     config = dict(config_tuple)
     return jira_utils.get_projects(config)
 
 @st.cache_data(ttl=3600)
 def get_managed_projects_cached(username, config_tuple):
-    all_projects = get_all_jira_projects_cached(config_tuple)
+    """Returns only projects that are in the user's managed list."""
+    all_projects = get_all_jira_projects_cached(username, config_tuple)
     managed_keys = load_managed_projects(username)
     if not all_projects:
         return []
     if managed_keys:
         projects = [p for p in all_projects if p.get('key') in managed_keys]
     else:
+        # If no managed projects file, show all projects initially
         projects = all_projects
     return sorted(projects, key=lambda x: x.get('key', ''))
 
 @st.cache_data(ttl=600)
-def get_versions_cached(config_tuple, project_key):
+def get_versions_cached(username, config_tuple, project_key):
+    """Fetches versions for a project using provided config."""
     config = dict(config_tuple)
     return jira_utils.get_versions(config, project_key)
 
-def get_versions_for_projects_cached(config_tuple, project_keys):
+def get_versions_for_projects_cached(username, config_tuple, project_keys):
+    """Fetches all version names for multiple projects."""
     if not project_keys:
         return []
     all_version_names = set()
     for key in project_keys:
-        versions = get_versions_cached(config_tuple, key)
+        versions = get_versions_cached(username, config_tuple, key)
         for v in versions:
             all_version_names.add(v.get('name'))
     return sorted(list(all_version_names))
@@ -203,12 +227,19 @@ def load_jira_config(username):
             if response.data:
                 content = response.data[0].get("content", {})
                 if content:
+                    raw_token = content.get("JIRA_API_TOKEN")
+                    decrypted_token = decrypt_data(raw_token)
+                    
+                    # If we just decrypted a plaintext token, trigger a silent re-save to encrypt it
+                    if raw_token and raw_token == decrypted_token and cipher_suite:
+                        save_jira_config(username, content.get("JIRA_BASE_URL"), content.get("JIRA_EMAIL"), decrypted_token)
+
                     return {
                         "JIRA_BASE_URL": content.get("JIRA_BASE_URL"),
                         "JIRA_EMAIL": content.get("JIRA_EMAIL"),
-                        "JIRA_API_TOKEN": content.get("JIRA_API_TOKEN"),
+                        "JIRA_API_TOKEN": decrypted_token,
                         "API_BASE": f"{content.get('JIRA_BASE_URL')}/rest/api/3" if content.get('JIRA_BASE_URL') else None,
-                        "AUTH": (content.get('JIRA_EMAIL'), content.get('JIRA_API_TOKEN')) if content.get('JIRA_EMAIL') and content.get('JIRA_API_TOKEN') else None,
+                        "AUTH": (content.get('JIRA_EMAIL'), decrypted_token) if content.get('JIRA_EMAIL') and decrypted_token else None,
                         "HEADERS": {"Accept": "application/json", "Content-Type": "application/json"}
                     }
         except Exception as e:
@@ -216,10 +247,11 @@ def load_jira_config(username):
     return {"JIRA_BASE_URL": None, "JIRA_EMAIL": None, "JIRA_API_TOKEN": None, "API_BASE": None, "AUTH": None, "HEADERS": None}
 
 def save_jira_config(username, url, email, token):
+    encrypted_token = encrypt_data(token)
     config_data = {
         "JIRA_BASE_URL": url,
         "JIRA_EMAIL": email,
-        "JIRA_API_TOKEN": token
+        "JIRA_API_TOKEN": encrypted_token
     }
     if supabase:
         try:
@@ -231,7 +263,7 @@ def save_jira_config(username, url, email, token):
             st.session_state.jira_config = {
                 "JIRA_BASE_URL": url,
                 "JIRA_EMAIL": email,
-                "JIRA_API_TOKEN": token,
+                "JIRA_API_TOKEN": token, # Keep plaintext in session state for API calls
                 "API_BASE": f"{url}/rest/api/3" if url else None,
                 "AUTH": (email, token) if email and token else None,
                 "HEADERS": {"Accept": "application/json", "Content-Type": "application/json"}
@@ -288,7 +320,6 @@ def main():
     with open('users.yaml') as file:
         config = yaml.load(file, Loader=SafeLoader)
 
-    # Ensure the config has the 30-minute expiry
     config['cookie']['expiry_days'] = 0.0208
 
     authenticator = stauth.Authenticate(
@@ -299,11 +330,18 @@ def main():
     )
 
     if st.session_state.get("authentication_status") != True:
+        # Clear user-specific state when not authenticated to ensure a fresh start on login
+        st.session_state.selected_projects = set()
+        st.session_state.selected_versions = []
+        for key in list(st.session_state.keys()):
+            if key.startswith("cb_"):
+                del st.session_state[key]
+        st.session_state.last_user = None
+
         tab_login, tab_signup = st.tabs(["🔐 Sign In", "📝 Sign Up"])
         
         with tab_login:
             try:
-                # This renders the login form inside the tab
                 authenticator.login(location='main')
             except Exception as e:
                 st.error(f"Login widget error: {e}")
@@ -312,7 +350,6 @@ def main():
                 st.error('Username/password is incorrect')
         
         with tab_signup:
-            # CSS to hide the 'Name' field in the registration form
             st.markdown("""
                 <style>
                 div[data-testid="stTextInput"]:has(label:contains("Name")) {
@@ -321,7 +358,6 @@ def main():
                 </style>
                 """, unsafe_allow_html=True)
             try:
-                # register_user handles Username, Email, and Password by default.
                 if authenticator.register_user(location='main'):
                     st.success('User registered successfully! You can now log in.')
                     save_users_config(config) 
@@ -334,18 +370,15 @@ def main():
     name = st.session_state["name"]
     username = st.session_state["username"]
 
-    # --- Session Reset on User Change ---
     if 'last_user' not in st.session_state or st.session_state.last_user != username:
         st.session_state.selected_projects = set()
         st.session_state.selected_versions = []
-        # Clear dynamic checkbox keys
         for key in list(st.session_state.keys()):
             if key.startswith("cb_"):
                 del st.session_state[key]
         st.session_state.last_user = username
 
     st.sidebar.title(f"Welcome {name}")
-
     authenticator.logout('Logout', location='sidebar')
 
     if 'jira_config' not in st.session_state:
@@ -365,7 +398,6 @@ def main():
         st.session_state.current_page = "⚙️ Config"
         st.rerun()
 
-    # --- Shared Data ---
     all_projects = get_managed_projects_cached(username, config_tuple) if is_config_valid else []
     project_keys = [p['key'] for p in all_projects]
 
@@ -498,7 +530,7 @@ def main():
 
         with tab2:
             st.subheader("➕ Add Projects from Jira")
-            all_jira_projects = get_all_jira_projects_cached(config_tuple)
+            all_jira_projects = get_all_jira_projects_cached(username, config_tuple)
             if all_jira_projects:
                 managed_keys = set(load_managed_projects(username))
                 available_to_add = [p for p in all_jira_projects if p['key'] not in managed_keys]
@@ -565,7 +597,7 @@ def main():
                         end_date_str = end_date.isoformat() if end_date else None
                         for p in current_selection_list:
                             with st.status(f"Processing {p}...", expanded=True) as status:
-                                existing_versions_list = get_versions_cached(config_tuple, p)
+                                existing_versions_list = get_versions_cached(username, config_tuple, p)
                                 existing_names = {v["name"] for v in existing_versions_list}
                                 for v in final_versions:
                                     if v in existing_names:
@@ -607,7 +639,7 @@ def main():
                     if rel_col.button("✅ Release Versions", use_container_width=True, type="primary"):
                         for p in current_selection_list:
                             with st.status(f"Releasing in {p}...", expanded=False) as status:
-                                proj_versions = get_versions_cached(config_tuple, p)
+                                proj_versions = get_versions_cached(username, config_tuple, p)
                                 for v_name in target_versions:
                                     target = next((v for v in proj_versions if v["name"] == v_name), None)
                                     if target:
@@ -627,7 +659,7 @@ def main():
                     if arc_col.button("📦 Archive Versions", use_container_width=True):
                         for p in current_selection_list:
                             with st.status(f"Archiving in {p}...", expanded=False) as status:
-                                proj_versions = get_versions_cached(config_tuple, p)
+                                proj_versions = get_versions_cached(username, config_tuple, p)
                                 for v_name in target_versions:
                                     target = next((v for v in proj_versions if v["name"] == v_name), None)
                                     if target:
@@ -664,7 +696,7 @@ def main():
                     if st.button("✏️ Rename Versions", use_container_width=True, type="primary"):
                         for p in current_selection_list:
                             with st.status(f"Renaming in {p}...", expanded=False) as status:
-                                proj_versions = get_versions_cached(config_tuple, p)
+                                proj_versions = get_versions_cached(username, config_tuple, p)
                                 for v_name in target_versions_rename:
                                     target = next((v for v in proj_versions if v["name"] == v_name), None)
                                     if target:
