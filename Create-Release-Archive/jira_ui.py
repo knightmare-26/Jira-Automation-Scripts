@@ -85,6 +85,24 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+def sanitize_data(data):
+    """Redact sensitive info from logs/errors."""
+    if isinstance(data, dict):
+        redacted = data.copy()
+        for key in ['JIRA_API_TOKEN', 'AUTH', 'token', 'password']:
+            if key in redacted:
+                redacted[key] = "[REDACTED]"
+        return redacted
+    return data
+
+def safe_log_error(msg, error=None):
+    """Log errors without exposing sensitive config details."""
+    clean_error = str(error)
+    # Basic redaction for common token/email patterns in error strings
+    if "@" in clean_error:
+        clean_error = "[REDACTED_EMAIL_OR_CONTENT]"
+    logger.error(f"{msg}: {clean_error}")
+
 file_handler = logging.FileHandler("jira_automation_runs.log")
 file_handler.setFormatter(
     logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
