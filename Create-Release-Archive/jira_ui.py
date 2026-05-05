@@ -500,20 +500,20 @@ def main():
         user = st.session_state.user
     else:
         user = None
-# User is authenticated
-if user:
-    username = user.email # Using email as username
-    st.sidebar.title(f"Welcome, {user.email}")
-    if st.sidebar.button("Logout"):
-        supabase.auth.sign_out()
-        st.rerun()
-else:
-    username = "Guest" # Fallback for guest mode
-    st.sidebar.title("Guest Mode")
-    if st.sidebar.button("🔐 Sign In / Sign Up", type="primary", use_container_width=True):
-        st.session_state.is_guest = False
-        st.session_state.view = 'login'
-        st.rerun()
+
+    if user:
+        username = user.email # Using email as username
+        st.sidebar.title(f"Welcome, {user.email}")
+        if st.sidebar.button("Logout"):
+            supabase.auth.sign_out()
+            st.rerun()
+    else:
+        username = "Guest" # Fallback for guest mode
+        st.sidebar.title("Guest Mode")
+        if st.sidebar.button("🔐 Sign In / Sign Up", type="primary", use_container_width=True):
+            st.session_state.is_guest = False
+            st.session_state.view = 'login'
+            st.rerun()
 
     # Ensure Jira config is loaded
     if 'jira_config' not in st.session_state:
