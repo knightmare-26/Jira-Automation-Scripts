@@ -454,7 +454,8 @@ def main():
                     user_res = supabase.table("profiles").select("email").eq("username", username).single().execute()
                     if user_res.data:
                         email = user_res.data["email"]
-                        supabase.auth.sign_in_with_password({"email": email, "password": password})
+                        auth_res = supabase.auth.sign_in_with_password({"email": email, "password": password})
+                        st.session_state.user = auth_res.user
                         st.session_state.view = 'app'
                         st.rerun()
                     else:
