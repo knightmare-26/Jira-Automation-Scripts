@@ -298,31 +298,33 @@ def save_jira_config(username, url, email, token):
     encrypted_token = encrypt_data(token)
     if supabase:
         try:
-            # 1. Get user_id from profiles
-            user_res = supabase.table("profiles").select("id").eq("username", username).single().execute()
-            if user_res.data:
-                user_id = user_res.data["id"]
+            # 1. Ensure user profile exists
+            user_res = supabase.table("profiles").select("id").eq("username", username).execute()
+            if not user_res.data:
+                # If profile missing, create one (this shouldn't happen with correct flow, but safe)
+                st.error("Error: User profile not found in database. Please re-login.")
+                return False
+            
+            user_id = user_res.data[0]["id"]
                 
-                # 2. Upsert credentials
-                supabase.table("jira_credentials").upsert({
-                    "user_id": user_id,
-                    "encrypted_token": encrypted_token,
-                    "base_url": url,
-                    "email": email
-                }).execute()
-                
-                st.session_state.jira_config = {
-                    "JIRA_BASE_URL": url,
-                    "JIRA_EMAIL": email,
-                    "JIRA_API_TOKEN": token, # Keep plaintext in session state for API calls
-                    "API_BASE": f"{url}/rest/api/3" if url else None,
-                    "AUTH": (email, token) if email and token else None,
-                    "HEADERS": {"Accept": "application/json", "Content-Type": "application/json"}
-                }
-                st.cache_data.clear()
-                return True
-            else:
-                st.error("Error: User profile not found.")
+            # 2. Upsert credentials
+            supabase.table("jira_credentials").upsert({
+                "user_id": user_id,
+                "encrypted_token": encrypted_token,
+                "base_url": url,
+                "email": email
+            }).execute()
+            
+            st.session_state.jira_config = {
+                "JIRA_BASE_URL": url,
+                "JIRA_EMAIL": email,
+                "JIRA_API_TOKEN": token,
+                "API_BASE": f"{url}/rest/api/3" if url else None,
+                "AUTH": (email, token) if email and token else None,
+                "HEADERS": {"Accept": "application/json", "Content-Type": "application/json"}
+            }
+            st.cache_data.clear()
+            return True
         except Exception as e:
             logger.error(f"Error saving Jira config to Supabase for {username}: {e}")
             st.error(f"Failed to save configuration to cloud: {e}")
