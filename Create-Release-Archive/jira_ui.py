@@ -483,6 +483,10 @@ def main():
                 del st.session_state[key]
         st.session_state.last_user = None
 
+        # Use session state to handle tab selection for redirect
+        if 'auth_tab' not in st.session_state:
+            st.session_state.auth_tab = "🔐 Sign In"
+
         tab_login, tab_signup = st.tabs(["🔐 Sign In", "📝 Sign Up"])
         
         with tab_login:
@@ -505,13 +509,31 @@ def main():
                 }
                 </style>
                 """, unsafe_allow_html=True)
+            
+            # Manual duplicate email check
+            existing_emails = [u['email'] for u in config['credentials']['usernames'].values()]
+            
             try:
+                # Intercept registration to check for duplicate email
+                # Note: register_user returns True when form is submitted and validated
                 if authenticator.register_user(location='main'):
-                    st.success('User registered successfully! You can now log in.')
-                    save_users_config(config)
-                    # Clear internal registration state to prevent message persistence on refresh
-                    if 'Register' in st.session_state:
-                        del st.session_state['Register']
+                    # Check if the newly added user (the last one in the dict) has a duplicate email
+                    new_username = list(config['credentials']['usernames'].keys())[-1]
+                    new_email = config['credentials']['usernames'][new_username]['email']
+                    
+                    # If email existed before this new registration (check against all but the new one)
+                    if existing_emails and new_email in existing_emails:
+                        # Remove the duplicate user from config before saving
+                        del config['credentials']['usernames'][new_username]
+                        st.error("Registration failed: Email already registered.")
+                    else:
+                        st.success('User registered successfully! Redirecting to login...')
+                        save_users_config(config)
+                        # Clear internal registration state
+                        if 'Register' in st.session_state:
+                            del st.session_state['Register']
+                        time.sleep(2)
+                        st.rerun() # Refresh to show login tab
             except Exception as e:
                 st.error(f"Registration failed: {e}")
         
