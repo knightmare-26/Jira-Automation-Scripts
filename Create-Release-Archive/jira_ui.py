@@ -751,7 +751,6 @@ def main():
                 
                 if final_versions:
                     st.divider()
-                    st.write(f"**Planned Versions:** {', '.join(final_versions)}")
                     st.session_state.selected_versions = final_versions
 
                     if st.button("🚀 Create Versions Across Active Projects", use_container_width=True, type="primary"):
@@ -795,7 +794,6 @@ def main():
 
                 if target_versions:
                     st.divider()
-                    st.write(f"Selected Fix Versions: **{', '.join(target_versions)}**")
                     st.warning("These actions will be applied to all selected versions across all active projects.")
                     rel_col, arc_col = st.columns(2)
                     if rel_col.button("✅ Release Versions", use_container_width=True, type="primary"):
