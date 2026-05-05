@@ -546,6 +546,7 @@ def main():
         username = "Guest" # Fallback for guest mode
         st.sidebar.title("Guest Mode")
         if st.sidebar.button("🔐 Sign In / Sign Up", type="primary", use_container_width=True):
+            st.session_state.is_guest = False
             st.session_state.view = 'login'
             st.rerun()
 
