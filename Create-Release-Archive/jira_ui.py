@@ -450,14 +450,7 @@ def main():
                 logger.error(f"Cloud auth config pull failed: {e}")
         st.session_state.auth_synced = True
 
-    if not os.path.exists('users.yaml'):
-        initial_config = {
-            'credentials': {'usernames': {}},
-            'cookie': {'expiry_days': 0.0208, 'key': 'some_signature_key', 'name': 'jira_manager_cookie'},
-            'preauthorized': {'emails': []}
-        }
-        save_users_config(initial_config)
-
+    # Pre-load config to determine valid landing page
     with open('users.yaml') as file:
         config = yaml.load(file, Loader=SafeLoader)
 
@@ -561,6 +554,20 @@ def main():
     name = st.session_state["name"]
     username = st.session_state["username"]
 
+    # --- Initial Config Check for Proper Landing Page ---
+    if 'jira_config' not in st.session_state:
+        st.session_state.jira_config = load_jira_config(username)
+        cleanup_old_logs()
+        
+    is_config_valid = all([
+        st.session_state.jira_config.get("JIRA_BASE_URL"), 
+        st.session_state.jira_config.get("JIRA_EMAIL"), 
+        st.session_state.jira_config.get("JIRA_API_TOKEN")
+    ])
+
+    if 'current_page' not in st.session_state or st.session_state.get('last_user') != username:
+        st.session_state.current_page = "📂 Manage Projects" if is_config_valid else "⚙️ Config"
+
     if 'last_user' not in st.session_state or st.session_state.last_user != username:
         st.session_state.selected_projects = set()
         st.session_state.selected_versions = []
@@ -582,22 +589,8 @@ def main():
         st.sidebar.title(f"Welcome {name}")
         authenticator.logout('Logout', location='sidebar')
 
-    if 'jira_config' not in st.session_state:
-        st.session_state.jira_config = load_jira_config(username)
-        cleanup_old_logs()
-
     config_tuple = tuple(st.session_state.jira_config.items())
 
-    is_config_valid = all([
-        st.session_state.jira_config.get("JIRA_BASE_URL"), 
-        st.session_state.jira_config.get("JIRA_EMAIL"), 
-        st.session_state.jira_config.get("JIRA_API_TOKEN")
-    ])
-    
-    if not is_config_valid and st.session_state.get('current_page') != "⚙️ Config":
-        st.warning("⚠️ **Action Required:** Jira configuration is incomplete. Please set up your credentials below.")
-        st.session_state.current_page = "⚙️ Config"
-        st.rerun()
 
     # --- Shared Data ---
     all_projects = get_managed_projects_cached(username, config_tuple) if is_config_valid else []
