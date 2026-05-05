@@ -49,6 +49,7 @@ This project is a Streamlit-based Jira Version Manager. It allows for batch proj
 1. **Supabase RLS:** (Completed ✅) Row Level Security has been enabled on `app_config` to enforce database-level data isolation.
 2. **Supabase Native Auth:** Potential migration from `streamlit-authenticator` to native Supabase JWT auth for improved security.
 3. **Advanced Permissions:** Role-based access control for different team members.
+4. **Relational Database Migration:** Migrate from monolithic `app_config` (JSON blobs) to relational tables (`profiles`, `jira_credentials`, `user_settings`) to improve performance, data isolation, and eliminate concurrency issues.
 
 ---
 *Last Updated: April 29, 2026*

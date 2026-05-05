@@ -35,10 +35,18 @@ Implement a professional landing page and a "Guest Mode" that allows users to us
     - Sidebar: Add a "Log in to save settings" button to encourage conversion.
     - Disable persistent features like "Save Selection as Shortcut" and "Manage Tracked Projects" (guests will see all projects directly from Jira).
 
-### 4. Implementation Details
-- **Entry Logic:** Refactor the authentication block in `main()` to allow entry via the landing page.
-- **Cache Management:** Ensure `st.cache_data.clear()` is triggered when switching between modes to prevent data carryover.
-- **Legacy Auth:** Maintain existing `streamlit-authenticator` logic for registered users.
+### 5. Refactoring: Database Schema Migration
+- **Objective:** Move from monolithic `app_config` storage to relational tables for better performance, concurrency, and maintainability.
+- **New Tables:**
+    - `profiles`: Core user identity.
+    - `jira_credentials`: Encrypted tokens and Jira URLs.
+    - `user_settings`: User-specific preferences.
+    - `auth_system_config`: Global configuration.
+- **Why:** 
+    - Eliminates concurrency issues (User A vs. User B overwrites).
+    - Enhances readability and query performance.
+    - Simplifies Row-Level Security (RLS) implementation.
+
 
 ## Verification & Testing
 - **Visual Audit:** Confirm the landing page layout and the Jira Token tooltip/link.
