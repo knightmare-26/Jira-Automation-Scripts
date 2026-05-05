@@ -470,6 +470,16 @@ def main():
         config['cookie']['expiry_days']
     )
 
+    @st.dialog("✅ Registration Successful")
+    def registration_success_dialog():
+        st.balloons()
+        st.success("Your account has been created successfully!")
+        st.write("You can now log in to manage your Jira projects and versions.")
+        if st.button("Go to Login", type="primary", use_container_width=True):
+            if 'Register' in st.session_state:
+                del st.session_state['Register']
+            st.rerun()
+
     if st.session_state.get("authentication_status") != True:
         if st.sidebar.button("⬅️ Back to Home"):
             st.session_state.view = 'landing'
@@ -482,10 +492,6 @@ def main():
             if key.startswith("cb_"):
                 del st.session_state[key]
         st.session_state.last_user = None
-
-        # Use session state to handle tab selection for redirect
-        if 'auth_tab' not in st.session_state:
-            st.session_state.auth_tab = "🔐 Sign In"
 
         tab_login, tab_signup = st.tabs(["🔐 Sign In", "📝 Sign Up"])
         
@@ -510,30 +516,31 @@ def main():
                 </style>
                 """, unsafe_allow_html=True)
             
-            # Manual duplicate email check
-            existing_emails = [u['email'] for u in config['credentials']['usernames'].values()]
-            
             try:
-                # Intercept registration to check for duplicate email
-                # Note: register_user returns True when form is submitted and validated
+                # Store emails BEFORE attempt
+                existing_emails = [u['email'].lower() for u in config['credentials']['usernames'].values()]
+                usernames_before = list(config['credentials']['usernames'].keys())
+
                 if authenticator.register_user(location='main'):
-                    # Check if the newly added user (the last one in the dict) has a duplicate email
-                    new_username = list(config['credentials']['usernames'].keys())[-1]
-                    new_email = config['credentials']['usernames'][new_username]['email']
+                    # Check if a new user was actually added
+                    new_usernames = [u for u in config['credentials']['usernames'].keys() if u not in usernames_before]
                     
-                    # If email existed before this new registration (check against all but the new one)
-                    if existing_emails and new_email in existing_emails:
-                        # Remove the duplicate user from config before saving
-                        del config['credentials']['usernames'][new_username]
-                        st.error("Registration failed: Email already registered.")
+                    if new_usernames:
+                        new_username = new_usernames[0]
+                        new_email = config['credentials']['usernames'][new_username]['email'].lower()
+                        
+                        if new_email in existing_emails:
+                            # Duplicate detected - Rollback the change to config
+                            del config['credentials']['usernames'][new_username]
+                            st.error("Registration failed: Email already registered.")
+                        else:
+                            # Real success
+                            save_users_config(config)
+                            registration_success_dialog()
                     else:
-                        st.success('User registered successfully! Redirecting to login...')
-                        save_users_config(config)
-                        # Clear internal registration state
-                        if 'Register' in st.session_state:
-                            del st.session_state['Register']
-                        time.sleep(2)
-                        st.rerun() # Refresh to show login tab
+                        # authenticator returned True but no user in dict? 
+                        # This can happen if the form was re-rendered after success
+                        pass
             except Exception as e:
                 st.error(f"Registration failed: {e}")
         
