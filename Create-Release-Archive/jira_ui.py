@@ -524,6 +524,21 @@ def main():
             st.session_state.view = 'landing'
             if 'user' in st.session_state: del st.session_state.user
             st.rerun()
+            
+        # --- Initial Config Check ---
+        if 'jira_config' not in st.session_state:
+            st.session_state.jira_config = load_jira_config(username)
+            cleanup_old_logs()
+            
+        is_config_valid = all([
+            st.session_state.jira_config.get("JIRA_BASE_URL"), 
+            st.session_state.jira_config.get("JIRA_EMAIL"), 
+            st.session_state.jira_config.get("JIRA_API_TOKEN")
+        ])
+        
+        if is_config_valid and st.session_state.get('current_page') == "⚙️ Config":
+            st.session_state.current_page = "📂 Manage Projects"
+            st.rerun()
     else:
         username = "Guest" # Fallback for guest mode
         st.sidebar.title("Guest Mode")
