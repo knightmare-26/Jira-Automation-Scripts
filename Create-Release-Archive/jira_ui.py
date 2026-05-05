@@ -434,7 +434,7 @@ def main():
         
         st.markdown('<div class="auth-header">', unsafe_allow_html=True)
         if st.button("⬅️ Back"):
-            st.session_state.view = 'landing'
+            st.session_state.view = 'app'
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
