@@ -551,7 +551,7 @@ def main():
             st.rerun()
 
     # Ensure Jira config is loaded
-    if 'jira_config' not in st.session_state:
+    if 'jira_config' not in st.session_state or st.session_state.get('last_user') != username:
         st.session_state.jira_config = load_jira_config(username)
         cleanup_old_logs()
 
