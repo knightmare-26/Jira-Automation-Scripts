@@ -494,13 +494,21 @@ def main():
         return
 
     # User is authenticated
-    user = session.user
-    username = user.email # Using email as username
-    
-    st.sidebar.title(f"Welcome, {user.email}")
-    if st.sidebar.button("Logout"):
-        supabase.auth.sign_out()
-        st.rerun()
+    if session and hasattr(session, 'user'):
+        user = session.user
+    elif 'user' in st.session_state:
+        user = st.session_state.user
+    else:
+        user = None
+
+    if user:
+        username = user.email # Using email as username
+        st.sidebar.title(f"Welcome, {user.email}")
+        if st.sidebar.button("Logout"):
+            supabase.auth.sign_out()
+            st.rerun()
+    else:
+        username = "Guest" # Fallback for guest mode
 
 
     # --- Shared Data ---
