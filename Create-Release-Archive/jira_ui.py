@@ -421,10 +421,10 @@ def main():
                 max-width: 500px;
                 margin: 50px auto;
                 padding: 2rem;
-                border: 1px solid #e0e0e0;
+                border: 1px solid #d0d0d0;
                 border-radius: 12px;
                 background-color: #ffffff;
-                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                box-shadow: 0 8px 16px rgba(0,0,0,0.15);
             }
             </style>
         """, unsafe_allow_html=True)
