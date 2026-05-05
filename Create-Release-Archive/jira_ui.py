@@ -696,16 +696,16 @@ def main():
 
     elif page == "📂 Manage Projects":
         st.title("📂 Manage Projects")
-        tab1, tab2 = st.tabs(["🎯 Active projects", "⚙️ Manage Tracked Projects"])
+        tab1, tab2 = st.tabs(["🎯 Active workspace", "⚙️ Manage Active workspace"])
 
         with tab1:
             st.header("🎯 Select Active Projects")
             if not all_projects:
-                st.info("💡 **Getting Started:** You haven't tracked any projects yet. Go to the **'Manage Tracked Projects'** tab to add some from your Jira account.")
+                st.info("💡 **Getting Started:** You haven't added any projects to your active workspace yet. Go to the **'Manage Active workspace'** tab to add some from your Jira account.")
 
             if all_projects:
                 col_ctrl1, col_ctrl2, _ = st.columns([1, 1, 4])
-                if col_ctrl1.button("Select All Tracked", use_container_width=True):
+                if col_ctrl1.button("Select All", use_container_width=True):
                     st.session_state.selected_projects = set(project_keys)
                     for k in project_keys:
                         st.session_state[f"cb_{k}"] = True
@@ -734,7 +734,7 @@ def main():
                         st.rerun()
 
         with tab2:
-            st.subheader("➕ Add Projects from Jira")
+            st.subheader("➕ Add projects to Active workspace")
             all_jira_projects = get_all_jira_projects_cached(username, config_tuple)
             if all_jira_projects:
                 managed_keys = set(load_managed_projects(username))
@@ -752,13 +752,13 @@ def main():
                                 time.sleep(1)
                                 st.rerun()
                 else:
-                    st.info("All your Jira projects are already being tracked.")
+                    st.info("All your Jira projects are already in your Active workspace.")
             else:
                 st.error("Could not fetch projects from Jira. Check your Config.")
 
             st.divider()
             if all_projects:
-                st.subheader("🗑️ Remove Tracked Projects")
+                st.subheader("🗑️ remove projects from Active workspace")
                 options_rm = [f"{p['key']} | {p['name']}" for p in all_projects]
                 selected_to_rm = st.multiselect("Search and select projects to remove:", options=options_rm, key="rm_multiselect")
                 if selected_to_rm:
@@ -783,9 +783,9 @@ def main():
         with tab_v1:
             st.header("🚀 Create New Versions")
             if not current_selection_list:
-                st.warning("⚠️ No projects selected. Please go to the **Active projects** tab to select projects.")
+                st.warning("⚠️ No projects selected. Please go to the **Active workspace** tab to select projects.")
             else:
-                st.write(f"**Active projects:** {', '.join(current_selection_list)}")
+                st.write(f"**Active workspace:** {', '.join(current_selection_list)}")
                 new_versions_raw = st.text_input("Enter Version Names (comma separated)", placeholder="e.g. 2026Train1, 2026Train2", key="new_versions_input")
                 final_versions = [v.strip() for v in new_versions_raw.split(",") if v.strip()]
                 col_date1, col_date2 = st.columns(2)
@@ -818,9 +818,9 @@ def main():
         with tab_v2:
             st.header("📦 Release & Archive")
             if not current_selection_list:
-                st.warning("⚠️ No projects selected. Please go to the **Active projects** tab to select projects.")
+                st.warning("⚠️ No projects selected. Please go to the **Active workspace** tab to select projects.")
             else:
-                st.write(f"**Active projects:** {', '.join(current_selection_list)}")
+                st.write(f"**Active workspace:** {', '.join(current_selection_list)}")
                 show_released_only = st.checkbox("Show only Released versions (not yet archived)", key="show_released_only")
                 with st.spinner("Loading versions..."):
                     all_v_details = []
@@ -881,9 +881,9 @@ def main():
         with tab_v3:
             st.header("✏️ Rename Versions")
             if not current_selection_list:
-                st.warning("⚠️ No projects selected. Please go to the **Active projects** tab to select projects.")
+                st.warning("⚠️ No projects selected. Please go to the **Active workspace** tab to select projects.")
             else:
-                st.write(f"**Active projects:** {', '.join(current_selection_list)}")
+                st.write(f"**Active workspace:** {', '.join(current_selection_list)}")
                 with st.spinner("Loading versions..."):
                     all_v_details = []
                     for p in current_selection_list:
