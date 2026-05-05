@@ -696,7 +696,7 @@ def main():
 
     elif page == "📂 Manage Projects":
         st.title("📂 Manage Projects")
-        tab1, tab2 = st.tabs(["🎯 Active Workspace", "⚙️ Manage Tracked Projects"])
+        tab1, tab2 = st.tabs(["🎯 Active projects", "⚙️ Manage Tracked Projects"])
 
         with tab1:
             st.header("🎯 Select Active Projects")
@@ -783,9 +783,9 @@ def main():
         with tab_v1:
             st.header("🚀 Create New Versions")
             if not current_selection_list:
-                st.warning("⚠️ No projects selected. Please go to the **Active Workspace** tab to select projects.")
+                st.warning("⚠️ No projects selected. Please go to the **Active projects** tab to select projects.")
             else:
-                st.write(f"**Active Workspace:** {', '.join(current_selection_list)}")
+                st.write(f"**Active projects:** {', '.join(current_selection_list)}")
                 new_versions_raw = st.text_input("Enter Version Names (comma separated)", placeholder="e.g. 2026Train1, 2026Train2", key="new_versions_input")
                 final_versions = [v.strip() for v in new_versions_raw.split(",") if v.strip()]
                 col_date1, col_date2 = st.columns(2)
@@ -818,9 +818,9 @@ def main():
         with tab_v2:
             st.header("📦 Release & Archive")
             if not current_selection_list:
-                st.warning("⚠️ No projects selected. Please go to the **Active Workspace** tab to select projects.")
+                st.warning("⚠️ No projects selected. Please go to the **Active projects** tab to select projects.")
             else:
-                st.write(f"**Active Workspace:** {', '.join(current_selection_list)}")
+                st.write(f"**Active projects:** {', '.join(current_selection_list)}")
                 show_released_only = st.checkbox("Show only Released versions (not yet archived)", key="show_released_only")
                 with st.spinner("Loading versions..."):
                     all_v_details = []
@@ -881,9 +881,9 @@ def main():
         with tab_v3:
             st.header("✏️ Rename Versions")
             if not current_selection_list:
-                st.warning("⚠️ No projects selected. Please go to the **Active Workspace** tab to select projects.")
+                st.warning("⚠️ No projects selected. Please go to the **Active projects** tab to select projects.")
             else:
-                st.write(f"**Active Workspace:** {', '.join(current_selection_list)}")
+                st.write(f"**Active projects:** {', '.join(current_selection_list)}")
                 with st.spinner("Loading versions..."):
                     all_v_details = []
                     for p in current_selection_list:
