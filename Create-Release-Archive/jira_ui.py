@@ -439,7 +439,7 @@ def main():
         
         st.markdown('<div class="auth-header">', unsafe_allow_html=True)
         if st.button("⬅️ Back"):
-            st.session_state.view = 'app'
+            st.session_state.view = 'landing'
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -454,8 +454,7 @@ def main():
                     user_res = supabase.table("profiles").select("email").eq("username", username).single().execute()
                     if user_res.data:
                         email = user_res.data["email"]
-                        auth_res = supabase.auth.sign_in_with_password({"email": email, "password": password})
-                        # Explicitly update view and refresh to load the session
+                        supabase.auth.sign_in_with_password({"email": email, "password": password})
                         st.session_state.view = 'app'
                         st.rerun()
                     else:
