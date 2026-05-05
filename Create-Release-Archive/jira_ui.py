@@ -433,14 +433,34 @@ def main():
                     st.error(f"Login failed: {e}")
         
         with tab_signup:
+            st.subheader("Create your account")
             email = st.text_input("Email", key="signup_email")
+            username = st.text_input("Username", key="signup_username")
             password = st.text_input("Password", type="password", key="signup_password")
+            confirm_password = st.text_input("Confirm Password", type="password", key="signup_confirm_password")
+            
             if st.button("Sign Up"):
-                try:
-                    supabase.auth.sign_up({"email": email, "password": password})
-                    st.success("Account created! Please check your email to confirm.")
-                except Exception as e:
-                    st.error(f"Registration failed: {e}")
+                if password != confirm_password:
+                    st.error("Passwords do not match!")
+                else:
+                    try:
+                        # 1. Sign up in Supabase Auth
+                        auth_res = supabase.auth.sign_up({"email": email, "password": password, "options": {"data": {"username": username}}})
+                        
+                        # 2. Add to profiles table
+                        if auth_res.user:
+                            supabase.table("profiles").insert({
+                                "id": auth_res.user.id,
+                                "username": username,
+                                "email": email
+                            }).execute()
+                            
+                            st.balloons()
+                            st.success("✅ Account created successfully! Redirecting...")
+                            time.sleep(2)
+                            st.rerun()
+                    except Exception as e:
+                        st.error(f"Registration failed: {e}")
         return
 
     # User is authenticated
@@ -544,7 +564,9 @@ def main():
             st.info("Update your Jira connection details here.")
         
         url = st.text_input("Jira Base URL", value=st.session_state.jira_config.get("JIRA_BASE_URL") or "", help="The URL of your Jira instance (e.g., https://yourcompany.atlassian.net)")
-        email = st.text_input("Jira Email", value=st.session_state.jira_config.get("JIRA_EMAIL") or "", help="The email address associated with your Jira account")
+        # Pre-populate email with user's login email
+        user_email = user.email if user else ""
+        email = st.text_input("Jira Email", value=st.session_state.jira_config.get("JIRA_EMAIL") or user_email, help="The email address associated with your Jira account")
         token = st.text_input("Jira API Token", value=st.session_state.jira_config.get("JIRA_API_TOKEN") or "", type="password", help="Your personal API token. You can create one at: https://id.atlassian.com/manage-profile/security/api-tokens")
         
         col_btn1, col_btn2 = st.columns([1, 1])
