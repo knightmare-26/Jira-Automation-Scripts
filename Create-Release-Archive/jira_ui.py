@@ -405,6 +405,11 @@ def get_auth_session():
     return supabase.auth.get_session()
 
 def main():
+    # Sync navigation state with URL query params
+    params = st.query_params
+    if 'page' in params:
+        st.session_state.current_page = params['page']
+    
     if 'view' not in st.session_state:
         st.session_state.view = 'landing'
     
@@ -451,6 +456,7 @@ def main():
                         email = user_res.data["email"]
                         auth_res = supabase.auth.sign_in_with_password({"email": email, "password": password})
                         st.session_state.user = auth_res.user
+                        st.session_state.view = 'app'
                         st.rerun()
                     else:
                         st.error("User not found.")
@@ -584,6 +590,7 @@ def main():
     page = st.sidebar.radio("Navigation", options=nav_options, index=current_index)
     if page != st.session_state.current_page:
         st.session_state.current_page = page
+        st.query_params['page'] = page
         st.rerun()
 
     if is_config_valid:
