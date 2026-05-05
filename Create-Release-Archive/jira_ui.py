@@ -414,8 +414,23 @@ def main():
     # Check for authenticated session
     session = get_auth_session()
     if not session:
-        # If not logged in, show Auth UI
-        if st.sidebar.button("⬅️ Back to Home"):
+        # Wrap the whole Auth UI in a centered container
+        st.markdown("""
+            <style>
+            .auth-container {
+                max-width: 400px;
+                margin: 0 auto;
+                padding: 2rem;
+                border: 1px solid #e0e0e0;
+                border-radius: 10px;
+                background-color: #f9f9f9;
+            }
+            </style>
+        """, unsafe_allow_html=True)
+
+        st.markdown('<div class="auth-container">', unsafe_allow_html=True)
+        
+        if st.button("⬅️ Back to Home"):
             st.session_state.view = 'landing'
             st.rerun()
 
@@ -426,7 +441,6 @@ def main():
             password = st.text_input("Password", type="password", key="login_password")
             if st.button("Sign In"):
                 try:
-                    # Look up user email by username from profiles table
                     user_res = supabase.table("profiles").select("email").eq("username", username).single().execute()
                     if user_res.data:
                         email = user_res.data["email"]
@@ -450,10 +464,7 @@ def main():
                     st.error("Passwords do not match!")
                 else:
                     try:
-                        # 1. Sign up in Supabase Auth
                         auth_res = supabase.auth.sign_up({"email": email, "password": password, "options": {"data": {"username": username}}})
-                        
-                        # 2. Add to profiles table
                         if auth_res.user:
                             try:
                                 supabase.table("profiles").insert({
@@ -464,7 +475,7 @@ def main():
                                 
                                 st.balloons()
                                 st.success("✅ Account created successfully! Redirecting...")
-                                time.sleep(2)
+                                time.sleep(3)
                                 st.rerun()
                             except Exception as db_e:
                                 if 'profiles_username_key' in str(db_e):
@@ -475,6 +486,8 @@ def main():
                                     st.error(f"Database error: {db_e}")
                     except Exception as e:
                         st.error(f"Registration failed: {e}")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
         return
 
     # User is authenticated
