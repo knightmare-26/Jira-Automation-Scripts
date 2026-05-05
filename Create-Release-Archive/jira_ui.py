@@ -676,16 +676,34 @@ def main():
 
     if page == "⚙️ Config":
         st.title("⚙️ Jira Configuration")
-        st.info("Update your Jira connection details here.")
+        # Force re-check
+        current_config = st.session_state.jira_config
+        valid = all([current_config.get("JIRA_BASE_URL"), current_config.get("JIRA_EMAIL"), current_config.get("JIRA_API_TOKEN")])
+        if not valid:
+            st.info("Update your Jira connection details here.")
+        
         url = st.text_input("Jira Base URL", value=st.session_state.jira_config.get("JIRA_BASE_URL") or "", help="The URL of your Jira instance (e.g., https://yourcompany.atlassian.net)")
         email = st.text_input("Jira Email", value=st.session_state.jira_config.get("JIRA_EMAIL") or "", help="The email address associated with your Jira account")
         token = st.text_input("Jira API Token", value=st.session_state.jira_config.get("JIRA_API_TOKEN") or "", type="password", help="Your personal API token. You can create one at: https://id.atlassian.com/manage-profile/security/api-tokens")
-        if st.button("Save Configuration", type="primary"):
-            if save_jira_config(username, url, email, token):
-                st.success("✅ Configuration saved successfully! Redirecting...")
-                time.sleep(1) 
-                st.session_state.current_page = "📂 Manage Projects"
-                st.rerun()
+        
+        col_btn1, col_btn2 = st.columns([1, 1])
+        with col_btn1:
+            if st.button("Save Configuration", type="primary", use_container_width=True):
+                if save_jira_config(username, url, email, token):
+                    st.success("✅ Configuration saved successfully! Redirecting...")
+                    time.sleep(1) 
+                    st.session_state.current_page = "📂 Manage Projects"
+                    st.rerun()
+        
+        with col_btn2:
+            if is_config_valid:
+                if st.button("🔍 Test Connection", use_container_width=True):
+                    with st.spinner("Validating credentials..."):
+                        # Test by fetching the current user from Jira
+                        if jira_utils.get_user_info(st.session_state.jira_config):
+                            st.success("✅ Connection Successful! API Token is valid.")
+                        else:
+                            st.error("❌ Connection Failed. Please check your URL, Email, and API Token.")
 
     elif page == "📂 Manage Projects":
         st.title("📂 Manage Projects")
