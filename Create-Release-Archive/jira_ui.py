@@ -684,7 +684,7 @@ def main():
                                 st.session_state.selected_projects.discard(key)
                         st.checkbox(f"**{p_key}**", key=f"cb_{p_key}", help=p['name'], on_change=on_change)
 
-                if current_selection:
+                if st.session_state.selected_projects:
                     st.divider()
                     if st.button("🚀 Go to: Manage Versions", use_container_width=True, type="primary"):
                         st.session_state.current_page = "🚀 Manage Versions"
