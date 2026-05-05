@@ -642,10 +642,10 @@ def main():
 
     if page == "⚙️ Config":
         st.title("⚙️ Jira Configuration")
-        st.info("Update your private Jira connection details here.")
-        url = st.text_input("Jira Base URL", value=st.session_state.jira_config.get("JIRA_BASE_URL") or "", help="e.g. https://your-domain.atlassian.net")
-        email = st.text_input("Jira Email", value=st.session_state.jira_config.get("JIRA_EMAIL") or "", help="Your Jira login email")
-        token = st.text_input("Jira API Token", value=st.session_state.jira_config.get("JIRA_API_TOKEN") or "", type="password", help="Create one at https://id.atlassian.com/manage-profile/security/api-tokens")
+        st.info("Update your Jira connection details here.")
+        url = st.text_input("Jira Base URL", value=st.session_state.jira_config.get("JIRA_BASE_URL") or "", help="The URL of your Jira instance (e.g., https://yourcompany.atlassian.net)")
+        email = st.text_input("Jira Email", value=st.session_state.jira_config.get("JIRA_EMAIL") or "", help="The email address associated with your Jira account")
+        token = st.text_input("Jira API Token", value=st.session_state.jira_config.get("JIRA_API_TOKEN") or "", type="password", help="Your personal API token. You can create one at: https://id.atlassian.com/manage-profile/security/api-tokens")
         if st.button("Save Configuration", type="primary"):
             if save_jira_config(username, url, email, token):
                 st.success("✅ Configuration saved successfully! Redirecting...")
