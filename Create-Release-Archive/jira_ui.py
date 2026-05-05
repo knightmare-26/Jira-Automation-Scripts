@@ -457,8 +457,16 @@ def main():
         st.session_state.auth_synced = True
 
     # Pre-load config to determine valid landing page
-    with open('users.yaml') as file:
-        config = yaml.load(file, Loader=SafeLoader)
+    if os.path.exists('users.yaml'):
+        with open('users.yaml') as file:
+            config = yaml.load(file, Loader=SafeLoader)
+    else:
+        # Fallback to default if no local YAML (using Supabase instead)
+        config = {
+            'credentials': {'usernames': {}},
+            'cookie': {'expiry_days': 0.0208, 'key': 'some_signature_key', 'name': 'jira_manager_cookie'},
+            'preauthorized': {'emails': []}
+        }
 
     config['cookie']['expiry_days'] = 0.0208
 
