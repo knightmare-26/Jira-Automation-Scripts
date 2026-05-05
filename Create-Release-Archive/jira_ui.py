@@ -429,12 +429,16 @@ def main():
         # Style for centered, fixed-width input fields
         st.markdown("""
             <style>
-            .stTextInput, .stButton {
+            .auth-container {
+                max-width: 400px;
+                margin: 0 auto;
+            }
+            .stTextInput, .stButton, .stTabs {
                 max-width: 400px;
                 margin-left: auto !important;
                 margin-right: auto !important;
             }
-            .auth-header {
+            .back-container {
                 max-width: 400px;
                 margin: 0 auto;
                 text-align: right;
@@ -442,7 +446,8 @@ def main():
             </style>
         """, unsafe_allow_html=True)
         
-        st.markdown('<div class="auth-header">', unsafe_allow_html=True)
+        st.markdown('<div class="auth-container">', unsafe_allow_html=True)
+        st.markdown('<div class="back-container">', unsafe_allow_html=True)
         if st.button("⬅️ Back"):
             st.session_state.view = 'landing'
             st.rerun()
@@ -503,6 +508,7 @@ def main():
                                     st.error(f"Database error: {db_e}")
                     except Exception as e:
                         st.error(f"Registration failed: {e}")
+        st.markdown('</div>', unsafe_allow_html=True)
         return
 
     # User is authenticated
