@@ -258,23 +258,22 @@ def load_jira_config(username):
 
     if supabase:
         try:
-            response = supabase.table("app_config").select("content").eq("id", f"jira_config_{username}").execute()
-            if response.data:
-                content = response.data[0].get("content", {})
-                if content:
-                    raw_token = content.get("JIRA_API_TOKEN")
-                    decrypted_token = decrypt_data(raw_token)
-                    
-                    # If we just decrypted a plaintext token, trigger a silent re-save to encrypt it
-                    if raw_token and raw_token == decrypted_token and cipher_suite:
-                        save_jira_config(username, content.get("JIRA_BASE_URL"), content.get("JIRA_EMAIL"), decrypted_token)
-
+            # 1. Get user_id from profiles
+            user_res = supabase.table("profiles").select("id").eq("username", username).single().execute()
+            if user_res.data:
+                user_id = user_res.data["id"]
+                # 2. Get credentials
+                cred_res = supabase.table("jira_credentials").select("encrypted_token, base_url, email").eq("user_id", user_id).single().execute()
+                
+                if cred_res.data:
+                    data = cred_res.data
+                    decrypted_token = decrypt_data(data["encrypted_token"])
                     return {
-                        "JIRA_BASE_URL": content.get("JIRA_BASE_URL"),
-                        "JIRA_EMAIL": content.get("JIRA_EMAIL"),
+                        "JIRA_BASE_URL": data["base_url"],
+                        "JIRA_EMAIL": data["email"],
                         "JIRA_API_TOKEN": decrypted_token,
-                        "API_BASE": f"{content.get('JIRA_BASE_URL')}/rest/api/3" if content.get('JIRA_BASE_URL') else None,
-                        "AUTH": (content.get('JIRA_EMAIL'), decrypted_token) if content.get('JIRA_EMAIL') and decrypted_token else None,
+                        "API_BASE": f"{data['base_url']}/rest/api/3" if data['base_url'] else None,
+                        "AUTH": (data["email"], decrypted_token) if data["email"] and decrypted_token else None,
                         "HEADERS": {"Accept": "application/json", "Content-Type": "application/json"}
                     }
         except Exception as e:
@@ -732,7 +731,7 @@ def main():
                     with cols[idx % 4]:
                         p_key = p['key']
                         def on_change(key=p_key):
-                            if st.session_state[f"cb_{key}"]:
+                            if st.session_state.get(f"cb_{key}", False):
                                 st.session_state.selected_projects.add(key)
                             else:
                                 st.session_state.selected_projects.discard(key)
