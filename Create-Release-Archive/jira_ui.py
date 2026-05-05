@@ -794,7 +794,6 @@ def main():
 
                 if target_versions:
                     st.divider()
-                    st.warning("These actions will be applied to all selected versions across all active projects.")
                     rel_col, arc_col = st.columns(2)
                     if rel_col.button("✅ Release Versions", use_container_width=True, type="primary"):
                         for p in current_selection_list:
