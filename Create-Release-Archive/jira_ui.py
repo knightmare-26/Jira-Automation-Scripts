@@ -470,18 +470,6 @@ def main():
         config['cookie']['expiry_days']
     )
 
-    @st.dialog("✅ Registration Successful")
-    def registration_success_dialog():
-        st.balloons()
-        st.success("Your account has been created successfully!")
-        st.write("You can now log in to manage your Jira projects and versions.")
-        if st.button("Go to Login", type="primary", use_container_width=True):
-            # Incrementing this key forces st.tabs to reset to the first tab
-            st.session_state.auth_tabs_key = st.session_state.get('auth_tabs_key', 0) + 1
-            if 'Register' in st.session_state:
-                del st.session_state['Register']
-            st.rerun()
-
     if st.session_state.get("authentication_status") != True:
         if st.sidebar.button("⬅️ Back to Home"):
             st.session_state.view = 'landing'
