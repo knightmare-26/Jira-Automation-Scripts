@@ -657,11 +657,8 @@ def main():
 
         with tab1:
             st.header("🎯 Select Active Projects")
-            current_selection = sorted(list(st.session_state.selected_projects))
             if not all_projects:
                 st.info("💡 **Getting Started:** You haven't tracked any projects yet. Go to the **'Manage Tracked Projects'** tab to add some from your Jira account.")
-            elif current_selection:
-                st.success(f"✅ **{len(current_selection)} Projects Active:** {', '.join(current_selection)}")
 
             if all_projects:
                 col_ctrl1, col_ctrl2, _ = st.columns([1, 1, 4])
