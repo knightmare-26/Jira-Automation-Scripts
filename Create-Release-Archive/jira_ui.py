@@ -331,7 +331,7 @@ def save_jira_config(username, url, email, token):
     return False
 
 def save_users_config(config):
-    """Save user configuration locally and granularly to Supabase."""
+    """Save user configuration locally and sync profiles to Supabase."""
     try:
         with open('users.yaml', 'w') as file:
             yaml.dump(config, file, default_flow_style=False)
@@ -341,23 +341,17 @@ def save_users_config(config):
     
     if supabase:
         try:
-            # Phase 3: Save individual user records instead of one giant file
-            # This prevents User A from overwriting User B's new registration
+            # Sync to new 'profiles' table
             usernames = config.get('credentials', {}).get('usernames', {})
             for username, user_data in usernames.items():
-                supabase.table("app_config").upsert({
-                    "id": f"auth_user_{username}",
-                    "content": user_data
+                # Upsert profile
+                supabase.table("profiles").upsert({
+                    "username": username,
+                    "email": user_data.get("email")
                 }).execute()
-            
-            # Also save the non-user config parts (cookie, etc)
-            base_config = {k: v for k, v in config.items() if k != 'credentials'}
-            supabase.table("app_config").upsert({
-                "id": "auth_base_config",
-                "content": base_config
-            }).execute()
         except Exception as e:
-            logger.error(f"Error syncing users to cloud: {e}")
+            logger.error(f"Error syncing profiles to cloud: {e}")
+            return False
     return True
 
 def render_landing_page():
@@ -710,7 +704,7 @@ def main():
                     st.rerun()
         
         with col_btn2:
-            if is_config_valid:
+            if valid:
                 if st.button("🔍 Test Connection", use_container_width=True):
                     with st.spinner("Validating credentials..."):
                         # Test by fetching the current user from Jira
