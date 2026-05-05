@@ -515,6 +515,7 @@ def main():
         if st.sidebar.button("Logout"):
             supabase.auth.sign_out()
             st.session_state.is_guest = False
+            st.session_state.view = 'landing'
             if 'user' in st.session_state: del st.session_state.user
             st.rerun()
     else:
