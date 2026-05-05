@@ -414,29 +414,31 @@ def main():
 
     # Check for authenticated session
     session = get_auth_session()
-    if not session:
-        # Improved styling for centered container
+    # Allow guests to bypass session check if they have a session state set
+    if not session and not st.session_state.get("is_guest"):
+        # Style for centered, fixed-width input fields
         st.markdown("""
             <style>
-            .auth-container {
-                max-width: 500px;
-                margin: 50px auto;
-                padding: 2rem;
-                border: 1px solid #d0d0d0;
-                border-radius: 12px;
-                background-color: #ffffff;
-                box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+            .stTextInput, .stButton {
+                max-width: 400px;
+                margin-left: auto !important;
+                margin-right: auto !important;
+            }
+            .auth-header {
+                max-width: 400px;
+                margin: 0 auto;
+                text-align: center;
             }
             </style>
         """, unsafe_allow_html=True)
-
-        st.markdown('<div class="auth-container">', unsafe_allow_html=True)
         
-        if st.button("⬅️ Back"):
+        if st.sidebar.button("⬅️ Back"):
             st.session_state.view = 'landing'
             st.rerun()
 
+        st.markdown('<div class="auth-header">', unsafe_allow_html=True)
         tab_login, tab_signup = st.tabs(["🔐 Sign In", "📝 Sign Up"])
+        st.markdown('</div>', unsafe_allow_html=True)
         
         with tab_login:
             st.subheader("Welcome back")
@@ -489,8 +491,6 @@ def main():
                                     st.error(f"Database error: {db_e}")
                     except Exception as e:
                         st.error(f"Registration failed: {e}")
-        
-        st.markdown('</div></div>', unsafe_allow_html=True)
         return
 
     # User is authenticated
