@@ -414,31 +414,22 @@ def main():
     # Check for authenticated session
     session = get_auth_session()
     if not session:
-        # Improved styling for centered 4:3 box
+        # Improved styling for centered container
         st.markdown("""
             <style>
-            .auth-wrapper {
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                min-height: 80vh;
-            }
             .auth-container {
-                width: 500px;
-                aspect-ratio: 4 / 3;
+                max-width: 500px;
+                margin: 50px auto;
                 padding: 2rem;
                 border: 1px solid #e0e0e0;
                 border-radius: 12px;
                 background-color: #ffffff;
                 box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             }
-            .back-btn {
-                margin-bottom: 1rem;
-            }
             </style>
         """, unsafe_allow_html=True)
 
-        st.markdown('<div class="auth-wrapper"><div class="auth-container">', unsafe_allow_html=True)
+        st.markdown('<div class="auth-container">', unsafe_allow_html=True)
         
         if st.button("⬅️ Back"):
             st.session_state.view = 'landing'
