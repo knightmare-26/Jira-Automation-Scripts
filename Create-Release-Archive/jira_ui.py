@@ -560,6 +560,9 @@ def main():
 
     st.sidebar.title("🎯 Jira Manager")
     
+    if 'current_page' not in st.session_state:
+        st.session_state.current_page = "📂 Manage Projects" if is_config_valid else "⚙️ Config"
+
     if is_config_valid:
         nav_options = ["📂 Manage Projects", "🚀 Manage Versions", "⚙️ Config"]
     else:
