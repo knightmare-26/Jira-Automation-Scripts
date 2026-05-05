@@ -456,9 +456,9 @@ def main():
             password = st.text_input("Password", type="password", key="login_password")
             if st.button("Sign In", type="primary", use_container_width=True):
                 try:
-                    user_res = supabase.table("profiles").select("email").eq("username", username).single().execute()
-                    if user_res.data:
-                        email = user_res.data["email"]
+                    user_res = supabase.table("profiles").select("email").eq("username", username).execute()
+                    if user_res.data and len(user_res.data) > 0:
+                        email = user_res.data[0]["email"]
                         auth_res = supabase.auth.sign_in_with_password({"email": email, "password": password})
                         st.session_state.user = auth_res.user
                         st.session_state.is_guest = False
