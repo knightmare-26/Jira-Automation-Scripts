@@ -111,6 +111,9 @@ logger.addHandler(file_handler)
 
 @st.cache_data(ttl=1800)
 def load_managed_projects(username):
+    if st.session_state.get("is_guest"):
+        return st.session_state.get("guest_projects", [])
+
     if supabase:
         try:
             response = supabase.table("user_settings").select("managed_projects").eq("username", username).execute()
@@ -129,6 +132,11 @@ def load_managed_projects(username):
     return []
 
 def save_managed_projects(username, projects):
+    if st.session_state.get("is_guest"):
+        st.session_state.guest_projects = projects
+        st.cache_data.clear()
+        return True
+
     if supabase:
         try:
             supabase.table("user_settings").upsert({
@@ -152,6 +160,9 @@ def save_managed_projects(username, projects):
 
 @st.cache_data(ttl=1800)
 def load_shortcuts(username):
+    if st.session_state.get("is_guest"):
+        return {} # Shortcuts disabled for guests
+
     if supabase:
         try:
             response = supabase.table("user_settings").select("shortcuts").eq("username", username).execute()
@@ -170,6 +181,9 @@ def load_shortcuts(username):
     return {}
 
 def save_shortcuts(username, shortcuts):
+    if st.session_state.get("is_guest"):
+        return False # Shortcuts disabled for guests
+
     if supabase:
         try:
             supabase.table("user_settings").upsert({
@@ -239,6 +253,9 @@ def get_versions_for_projects_cached(username, config_tuple, project_keys):
     return sorted(list(all_version_names))
 
 def load_jira_config(username):
+    if st.session_state.get("is_guest"):
+        return st.session_state.get("guest_config", {"JIRA_BASE_URL": None, "JIRA_EMAIL": None, "JIRA_API_TOKEN": None, "API_BASE": None, "AUTH": None, "HEADERS": None})
+
     if supabase:
         try:
             response = supabase.table("app_config").select("content").eq("id", f"jira_config_{username}").execute()
@@ -265,6 +282,20 @@ def load_jira_config(username):
     return {"JIRA_BASE_URL": None, "JIRA_EMAIL": None, "JIRA_API_TOKEN": None, "API_BASE": None, "AUTH": None, "HEADERS": None}
 
 def save_jira_config(username, url, email, token):
+    if st.session_state.get("is_guest"):
+        config_data = {
+            "JIRA_BASE_URL": url,
+            "JIRA_EMAIL": email,
+            "JIRA_API_TOKEN": token,
+            "API_BASE": f"{url}/rest/api/3" if url else None,
+            "AUTH": (email, token) if email and token else None,
+            "HEADERS": {"Accept": "application/json", "Content-Type": "application/json"}
+        }
+        st.session_state.guest_config = config_data
+        st.session_state.jira_config = config_data
+        st.cache_data.clear()
+        return True
+
     encrypted_token = encrypt_data(token)
     config_data = {
         "JIRA_BASE_URL": url,
@@ -323,7 +354,57 @@ def save_users_config(config):
             logger.error(f"Error syncing users to cloud: {e}")
     return True
 
+def render_landing_page():
+    st.markdown("<h1 style='text-align: center;'>🎯 Jira Version Manager</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; font-size: 1.2em;'>Batch manage fix versions across multiple projects with ease.</p>", unsafe_allow_html=True)
+    
+    st.divider()
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("🚀 Features")
+        st.markdown("""
+        - **Batch Actions:** Create, release, archive, and rename versions across multiple projects at once.
+        - **Custom Tracking:** Maintain a list of projects you care about.
+        - **Quick Shortcuts:** Save your frequent project selections for one-click access.
+        - **Security First:** Your API tokens are encrypted and never stored in plaintext.
+        """)
+        
+    with col2:
+        st.subheader("📖 Quick Start")
+        st.markdown("""
+        1. **Configure:** Enter your Jira URL, Email, and [API Token](https://id.atlassian.com/manage-profile/security/api-tokens).
+        2. **Select Projects:** Add projects to your tracking list and activate them.
+        3. **Perform Actions:** Create or update versions across all active projects.
+        """)
+        
+    st.divider()
+    
+    cta_col1, cta_col2, cta_col3 = st.columns([1, 2, 1])
+    with cta_col2:
+        if st.button("🚀 Try it now (Guest Mode)", use_container_width=True, type="primary"):
+            st.session_state.is_guest = True
+            st.session_state.view = 'app'
+            st.session_state.username = 'Guest'
+            st.session_state.name = 'Guest User'
+            st.session_state.authentication_status = True
+            st.rerun()
+            
+        if st.button("🔐 Login or Sign Up", use_container_width=True):
+            st.session_state.view = 'login'
+            st.rerun()
+
+    st.markdown("<p style='text-align: center; color: gray; font-size: 0.8em; margin-top: 2em;'>Note: Guest Mode data is session-only and will be cleared on refresh.</p>", unsafe_allow_html=True)
+
 def main():
+    if 'view' not in st.session_state:
+        st.session_state.view = 'landing'
+    
+    if st.session_state.view == 'landing':
+        render_landing_page()
+        return
+
     if 'current_page' not in st.session_state:
         st.session_state.current_page = "📂 Manage Projects"
 
@@ -390,6 +471,10 @@ def main():
     )
 
     if st.session_state.get("authentication_status") != True:
+        if st.sidebar.button("⬅️ Back to Home"):
+            st.session_state.view = 'landing'
+            st.rerun()
+
         # Clear user-specific state when not authenticated to ensure a fresh start on login
         st.session_state.selected_projects = set()
         st.session_state.selected_versions = []
@@ -408,6 +493,9 @@ def main():
             
             if st.session_state.get("authentication_status") == False:
                 st.error('Username/password is incorrect')
+            elif st.session_state.get("authentication_status") == True:
+                st.session_state.view = 'app'
+                st.rerun()
         
         with tab_signup:
             st.markdown("""
@@ -438,8 +526,20 @@ def main():
                 del st.session_state[key]
         st.session_state.last_user = username
 
-    st.sidebar.title(f"Welcome {name}")
-    authenticator.logout('Logout', location='sidebar')
+    if st.session_state.get("is_guest"):
+        st.sidebar.title("Guest Mode (Session Only)")
+        if st.sidebar.button("🔐 Log in to save settings"):
+            # Reset guest state and go to login
+            st.session_state.is_guest = False
+            st.session_state.authentication_status = None
+            st.session_state.username = None
+            st.session_state.name = None
+            st.session_state.view = 'login'
+            st.cache_data.clear()
+            st.rerun()
+    else:
+        st.sidebar.title(f"Welcome {name}")
+        authenticator.logout('Logout', location='sidebar')
 
     if 'jira_config' not in st.session_state:
         st.session_state.jira_config = load_jira_config(username)
@@ -475,6 +575,9 @@ def main():
     # --- Dialogs ---
     @st.dialog("💾 Save Workspace Shortcut")
     def save_shortcut_dialog():
+        if st.session_state.get("is_guest"):
+            st.warning("⚠️ Shortcuts are only available for registered users. [Sign up](/?view=login) to save settings!")
+            return
         current_selection = sorted(list(st.session_state.selected_projects))
         if not current_selection:
             st.warning("No projects selected to save.")
@@ -520,6 +623,9 @@ def main():
                 save_shortcut_dialog()
             
         shortcuts = load_shortcuts(username)
+        if not shortcuts and st.session_state.get("is_guest"):
+            st.sidebar.info("💡 Sign up to save shortcuts!")
+        
         for s_name, data in shortcuts.items():
             col1, col2 = st.sidebar.columns([4, 1])
             if col1.button(f"📍 {s_name}", key=f"apply_{s_name}", use_container_width=True):
@@ -537,9 +643,9 @@ def main():
     if page == "⚙️ Config":
         st.title("⚙️ Jira Configuration")
         st.info("Update your private Jira connection details here.")
-        url = st.text_input("Jira Base URL", value=st.session_state.jira_config.get("JIRA_BASE_URL") or "")
-        email = st.text_input("Jira Email", value=st.session_state.jira_config.get("JIRA_EMAIL") or "")
-        token = st.text_input("Jira API Token", value=st.session_state.jira_config.get("JIRA_API_TOKEN") or "", type="password")
+        url = st.text_input("Jira Base URL", value=st.session_state.jira_config.get("JIRA_BASE_URL") or "", help="e.g. https://your-domain.atlassian.net")
+        email = st.text_input("Jira Email", value=st.session_state.jira_config.get("JIRA_EMAIL") or "", help="Your Jira login email")
+        token = st.text_input("Jira API Token", value=st.session_state.jira_config.get("JIRA_API_TOKEN") or "", type="password", help="Create one at https://id.atlassian.com/manage-profile/security/api-tokens")
         if st.button("Save Configuration", type="primary"):
             if save_jira_config(username, url, email, token):
                 st.success("✅ Configuration saved successfully! Redirecting...")
