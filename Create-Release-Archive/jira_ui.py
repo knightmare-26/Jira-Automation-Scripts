@@ -455,7 +455,7 @@ def main():
                     if user_res.data:
                         email = user_res.data["email"]
                         auth_res = supabase.auth.sign_in_with_password({"email": email, "password": password})
-                        st.session_state.user = auth_res.user
+                        # Explicitly update view and refresh to load the session
                         st.session_state.view = 'app'
                         st.rerun()
                     else:
