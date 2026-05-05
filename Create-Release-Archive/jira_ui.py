@@ -554,13 +554,13 @@ def main():
                             # Real Success
                             if save_users_config(config):
                                 st.balloons()
-                                st.success("✅ Account created successfully! Redirecting to Sign In in 5 seconds...")
+                                st.success("✅ Account created successfully! Redirecting...")
                                 # Clear internal registration state to prevent loop
                                 if 'Register' in st.session_state:
                                     del st.session_state['Register']
                                 # Increment key to reset tabs to "Sign In"
                                 st.session_state.auth_tabs_key = st.session_state.get('auth_tabs_key', 0) + 1
-                                time.sleep(5)
+                                time.sleep(3)
                                 st.rerun()
                             else:
                                 st.error("Registration failed: Could not sync with cloud storage.")
