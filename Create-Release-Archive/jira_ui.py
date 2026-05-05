@@ -510,6 +510,18 @@ def main():
     else:
         username = "Guest" # Fallback for guest mode
 
+    # Ensure Jira config is loaded
+    if 'jira_config' not in st.session_state:
+        st.session_state.jira_config = load_jira_config(username)
+        cleanup_old_logs()
+
+    config_tuple = tuple(st.session_state.jira_config.items())
+
+    is_config_valid = all([
+        st.session_state.jira_config.get("JIRA_BASE_URL"), 
+        st.session_state.jira_config.get("JIRA_EMAIL"), 
+        st.session_state.jira_config.get("JIRA_API_TOKEN")
+    ])
 
     # --- Shared Data ---
     all_projects = get_managed_projects_cached(username, config_tuple) if is_config_valid else []
