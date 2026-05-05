@@ -454,8 +454,11 @@ def main():
                     user_res = supabase.table("profiles").select("email").eq("username", username).single().execute()
                     if user_res.data:
                         email = user_res.data["email"]
+                        logger.info(f"Attempting login for: {email}")
                         auth_res = supabase.auth.sign_in_with_password({"email": email, "password": password})
-                        # Ensure session is saved and view is updated
+                        logger.info(f"Supabase Auth Response: {auth_res.user}")
+                        
+                        # Explicitly update state and session to force transition
                         st.session_state.user = auth_res.user
                         st.session_state.is_guest = False
                         st.session_state.view = 'app'
@@ -463,6 +466,7 @@ def main():
                     else:
                         st.error("User not found.")
                 except Exception as e:
+                    logger.error(f"Login failed: {e}")
                     st.error(f"Login failed: {e}")
         
         with tab_signup:
