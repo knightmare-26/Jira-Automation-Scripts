@@ -522,7 +522,10 @@ def main():
             supabase.auth.sign_out()
             st.session_state.is_guest = False
             st.session_state.view = 'landing'
+            # Clear all sensitive session data
             if 'user' in st.session_state: del st.session_state.user
+            if 'jira_config' in st.session_state: del st.session_state.jira_config
+            if 'selected_projects' in st.session_state: st.session_state.selected_projects = set()
             st.rerun()
             
         # --- Initial Config Check ---
