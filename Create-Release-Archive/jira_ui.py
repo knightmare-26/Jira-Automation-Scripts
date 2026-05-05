@@ -508,7 +508,10 @@ def main():
             try:
                 if authenticator.register_user(location='main'):
                     st.success('User registered successfully! You can now log in.')
-                    save_users_config(config) 
+                    save_users_config(config)
+                    # Clear internal registration state to prevent message persistence on refresh
+                    if 'Register' in st.session_state:
+                        del st.session_state['Register']
             except Exception as e:
                 st.error(f"Registration failed: {e}")
         
