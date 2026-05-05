@@ -345,10 +345,11 @@ def save_users_config(config):
             usernames = config.get('credentials', {}).get('usernames', {})
             for username, user_data in usernames.items():
                 # Upsert profile
-                supabase.table("profiles").upsert({
+                res = supabase.table("profiles").upsert({
                     "username": username,
                     "email": user_data.get("email")
                 }).execute()
+                logger.info(f"Supabase Profile Upsert Response: {res.data}")
         except Exception as e:
             logger.error(f"Error syncing profiles to cloud: {e}")
             return False
@@ -405,199 +406,46 @@ def main():
         render_landing_page()
         return
 
-    if 'current_page' not in st.session_state:
-        st.session_state.current_page = "📂 Manage Projects"
-
-    # --- Initial Cloud Sync (Granular) ---
-    if 'auth_synced' not in st.session_state:
-        if supabase:
-            try:
-                # 1. Load base config (cookies, etc)
-                response_base = supabase.table("app_config").select("content").eq("id", "auth_base_config").execute()
-                
-                # 2. Load all individual users
-                response_users = supabase.table("app_config").select("id", "content").filter("id", "like", "auth_user_%").execute()
-                
-                if response_users.data:
-                    # Reconstruct the full config object
-                    new_config = {
-                        'credentials': {'usernames': {}},
-                        'cookie': {'expiry_days': 0.0208, 'key': 'some_signature_key', 'name': 'jira_manager_cookie'},
-                        'preauthorized': {'emails': []}
-                    }
-                    
-                    if response_base.data:
-                        new_config.update(response_base.data[0].get("content", {}))
-                    
-                    for row in response_users.data:
-                        username = row['id'].replace("auth_user_", "")
-                        new_config['credentials']['usernames'][username] = row['content']
-                    
-                    with open('users.yaml', 'w') as file:
-                        yaml.dump(new_config, file, default_flow_style=False)
-                
-                # Backward compatibility: Check for old monolithic file if no granular users found
-                elif not response_users.data:
-                    response_old = supabase.table("app_config").select("content").eq("id", "users_config").execute()
-                    if response_old.data:
-                        cloud_config = response_old.data[0].get("content")
-                        with open('users.yaml', 'w') as file:
-                            yaml.dump(cloud_config, file, default_flow_style=False)
-                        # Immediately migrate to granular format
-                        save_users_config(cloud_config)
-
-            except Exception as e:
-                logger.error(f"Cloud auth config pull failed: {e}")
-        st.session_state.auth_synced = True
-
-    # Pre-load config to determine valid landing page
-    if os.path.exists('users.yaml'):
-        with open('users.yaml') as file:
-            config = yaml.load(file, Loader=SafeLoader)
-    else:
-        # Fallback to default if no local YAML (using Supabase instead)
-        config = {
-            'credentials': {'usernames': {}},
-            'cookie': {'expiry_days': 0.0208, 'key': 'some_signature_key', 'name': 'jira_manager_cookie'},
-            'preauthorized': {'emails': []}
-        }
-
-    config['cookie']['expiry_days'] = 0.0208
-
-    authenticator = stauth.Authenticate(
-        config['credentials'],
-        config['cookie']['name'],
-        config['cookie']['key'],
-        config['cookie']['expiry_days']
-    )
-
-    if st.session_state.get("authentication_status") != True:
+    # Check for authenticated session
+    session = get_auth_session()
+    if not session:
+        # If not logged in, show Auth UI
         if st.sidebar.button("⬅️ Back to Home"):
             st.session_state.view = 'landing'
             st.rerun()
 
-        # Clear user-specific state when not authenticated to ensure a fresh start on login
-        st.session_state.selected_projects = set()
-        st.session_state.selected_versions = []
-        for key in list(st.session_state.keys()):
-            if key.startswith("cb_"):
-                del st.session_state[key]
-        st.session_state.last_user = None
-
-        # Dynamic key for tabs to allow programmatic reset
-        tabs_key = f"auth_tabs_{st.session_state.get('auth_tabs_key', 0)}"
-        tab_login, tab_signup = st.tabs(["🔐 Sign In", "📝 Sign Up"], key=tabs_key)
+        tab_login, tab_signup = st.tabs(["🔐 Sign In", "📝 Sign Up"])
         
         with tab_login:
-            try:
-                authenticator.login(location='main')
-            except Exception as e:
-                st.error(f"Login widget error: {e}")
-            
-            if st.session_state.get("authentication_status") == False:
-                st.error('Username/password is incorrect')
-            elif st.session_state.get("authentication_status") == True:
-                st.session_state.view = 'app'
-                st.rerun()
+            email = st.text_input("Email", key="login_email")
+            password = st.text_input("Password", type="password", key="login_password")
+            if st.button("Sign In"):
+                try:
+                    auth_res = supabase.auth.sign_in_with_password({"email": email, "password": password})
+                    st.session_state.user = auth_res.user
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Login failed: {e}")
         
         with tab_signup:
-            st.markdown("""
-                <style>
-                div[data-testid="stTextInput"]:has(label:contains("Name")) {
-                    display: none;
-                }
-                </style>
-                """, unsafe_allow_html=True)
-            
-            try:
-                # Store existing data BEFORE attempt for validation
-                existing_emails = [u['email'].lower() for u in config['credentials']['usernames'].values()]
-                existing_usernames = [u.lower() for u in config['credentials']['usernames'].keys()]
-                usernames_before = list(config['credentials']['usernames'].keys())
+            email = st.text_input("Email", key="signup_email")
+            password = st.text_input("Password", type="password", key="signup_password")
+            if st.button("Sign Up"):
+                try:
+                    supabase.auth.sign_up({"email": email, "password": password})
+                    st.success("Account created! Please check your email to confirm.")
+                except Exception as e:
+                    st.error(f"Registration failed: {e}")
+        return
 
-                if authenticator.register_user(location='main'):
-                    # The widget adds the user to config['credentials']['usernames'] automatically on success
-                    new_usernames = [u for u in config['credentials']['usernames'].keys() if u not in usernames_before]
-                    
-                    if new_usernames:
-                        new_username = new_usernames[0]
-                        new_user_data = config['credentials']['usernames'][new_username]
-                        new_email = new_user_data['email'].lower()
-                        
-                        # 1. Reserved Name Check
-                        if new_username.lower() == "guest":
-                            del config['credentials']['usernames'][new_username]
-                            st.error("Registration failed: 'Guest' is a reserved username.")
-                        
-                        # 2. Duplicate Username Check (Extra safety)
-                        elif new_username.lower() in existing_usernames:
-                            del config['credentials']['usernames'][new_username]
-                            st.error("Registration failed: Username already exists.")
-
-                        # 3. Duplicate Email Check
-                        elif new_email in existing_emails:
-                            del config['credentials']['usernames'][new_username]
-                            st.error("Registration failed: Email already registered.")
-                            
-                        else:
-                            # Real Success
-                            if save_users_config(config):
-                                st.balloons()
-                                st.success("✅ Account created successfully! Redirecting...")
-                                # Clear internal registration state to prevent loop
-                                if 'Register' in st.session_state:
-                                    del st.session_state['Register']
-                                # Increment key to reset tabs to "Sign In"
-                                st.session_state.auth_tabs_key = st.session_state.get('auth_tabs_key', 0) + 1
-                                time.sleep(3)
-                                st.rerun()
-                            else:
-                                st.error("Registration failed: Could not sync with cloud storage.")
-            except Exception as e:
-                st.error(f"Registration failed: {e}")
-        
-        if st.session_state.get("authentication_status") != True:
-            return
-
-    name = st.session_state["name"]
-    username = st.session_state["username"]
-
-    # --- Initial Config Check for Proper Landing Page ---
-    if 'jira_config' not in st.session_state:
-        st.session_state.jira_config = load_jira_config(username)
-        cleanup_old_logs()
-        
-    is_config_valid = all([
-        st.session_state.jira_config.get("JIRA_BASE_URL"), 
-        st.session_state.jira_config.get("JIRA_EMAIL"), 
-        st.session_state.jira_config.get("JIRA_API_TOKEN")
-    ])
-
-    if 'current_page' not in st.session_state or st.session_state.get('last_user') != username:
-        st.session_state.current_page = "📂 Manage Projects" if is_config_valid else "⚙️ Config"
-
-    if 'last_user' not in st.session_state or st.session_state.last_user != username:
-        st.session_state.selected_projects = set()
-        st.session_state.selected_versions = []
-        for key in list(st.session_state.keys()):
-            if key.startswith("cb_"):
-                del st.session_state[key]
-        st.session_state.last_user = username
-
-    if st.session_state.get("is_guest"):
-        st.sidebar.title("Guest Mode (Session Only)")
-        if st.sidebar.button("🔐 Log in to save settings"):
-            # Reset guest state and go to login
-            for key in list(st.session_state.keys()):
-                del st.session_state[key]
-            st.cache_data.clear()
-            st.session_state.view = 'login'
-            st.rerun()
-    else:
-        st.sidebar.title(f"Welcome {name}")
-        authenticator.logout('Logout', location='sidebar')
-
-    config_tuple = tuple(st.session_state.jira_config.items())
+    # User is authenticated
+    user = session.user
+    username = user.email # Using email as username
+    
+    st.sidebar.title(f"Welcome, {user.email}")
+    if st.sidebar.button("Logout"):
+        supabase.auth.sign_out()
+        st.rerun()
 
 
     # --- Shared Data ---
