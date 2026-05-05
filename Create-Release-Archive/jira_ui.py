@@ -542,7 +542,6 @@ def main():
                         
                         # 2. Duplicate Username Check (Extra safety)
                         elif new_username.lower() in existing_usernames:
-                            # This is usually handled by the widget, but we check again for safety
                             del config['credentials']['usernames'][new_username]
                             st.error("Registration failed: Username already exists.")
 
@@ -552,9 +551,17 @@ def main():
                             st.error("Registration failed: Email already registered.")
                             
                         else:
-                            # All checks passed
+                            # Real Success
                             if save_users_config(config):
-                                registration_success_dialog()
+                                st.balloons()
+                                st.success("✅ Account created successfully! Redirecting to Sign In in 5 seconds...")
+                                # Clear internal registration state to prevent loop
+                                if 'Register' in st.session_state:
+                                    del st.session_state['Register']
+                                # Increment key to reset tabs to "Sign In"
+                                st.session_state.auth_tabs_key = st.session_state.get('auth_tabs_key', 0) + 1
+                                time.sleep(5)
+                                st.rerun()
                             else:
                                 st.error("Registration failed: Could not sync with cloud storage.")
             except Exception as e:
