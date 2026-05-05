@@ -530,12 +530,10 @@ def main():
         st.sidebar.title("Guest Mode (Session Only)")
         if st.sidebar.button("🔐 Log in to save settings"):
             # Reset guest state and go to login
-            st.session_state.is_guest = False
-            st.session_state.authentication_status = None
-            st.session_state.username = None
-            st.session_state.name = None
-            st.session_state.view = 'login'
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
             st.cache_data.clear()
+            st.session_state.view = 'login'
             st.rerun()
     else:
         st.sidebar.title(f"Welcome {name}")
