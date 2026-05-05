@@ -758,7 +758,7 @@ def main():
 
             st.divider()
             if all_projects:
-                st.subheader("🗑️ remove projects from Active workspace")
+                st.subheader("🗑️ Remove projects from Active workspace")
                 options_rm = [f"{p['key']} | {p['name']}" for p in all_projects]
                 selected_to_rm = st.multiselect("Search and select projects to remove:", options=options_rm, key="rm_multiselect")
                 if selected_to_rm:
