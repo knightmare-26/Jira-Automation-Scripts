@@ -136,33 +136,15 @@ def archive_version(config, version_id, project_key, version_name):
         logger.error(f"Error archiving version {version_name} in project {project_key}: {e}")
         return False
 
-def rename_version(config, version_id, project_key, old_name, new_name):
-    """Update the name of a Jira fix version."""
+def get_user_info(config):
+    """Fetch current user info to test Jira API credentials."""
     if not config or not config.get("API_BASE") or not config.get("AUTH"):
-        return False
-    
-    # Fetch existing version to preserve/update description
-    existing_version = get_version(config, version_id)
-    existing_desc = existing_version.get("description", "") if existing_version else ""
-    
-    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    user_info = f" by {config.get('JIRA_EMAIL')}" if config.get('JIRA_EMAIL') else ""
-    new_log = f"Renamed from '{old_name}' to '{new_name}'{user_info} on {now_str}."
-    
-    combined_desc = f"{existing_desc}\n{new_log}".strip()
-    
+        return None
     try:
-        r = requests.put(
-            f"{config['API_BASE']}/version/{version_id}",
-            auth=config['AUTH'],
-            headers=config['HEADERS'],
-            json={
-                "name": new_name,
-                "description": combined_desc
-            },
-        )
+        # Jira API 3 endpoint to fetch self
+        r = requests.get(f"{config['API_BASE']}/myself", auth=config['AUTH'], headers=config['HEADERS'])
         r.raise_for_status()
-        return True
+        return r.json()
     except Exception as e:
-        logger.error(f"Error renaming version '{old_name}' to '{new_name}' in project {project_key}: {e}")
-        return False
+        logger.error(f"Error validating credentials: {e}")
+        return None
