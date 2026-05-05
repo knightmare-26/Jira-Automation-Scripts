@@ -517,30 +517,42 @@ def main():
                 """, unsafe_allow_html=True)
             
             try:
-                # Store emails BEFORE attempt
+                # Store existing data BEFORE attempt for validation
                 existing_emails = [u['email'].lower() for u in config['credentials']['usernames'].values()]
+                existing_usernames = [u.lower() for u in config['credentials']['usernames'].keys()]
                 usernames_before = list(config['credentials']['usernames'].keys())
 
                 if authenticator.register_user(location='main'):
-                    # Check if a new user was actually added
+                    # The widget adds the user to config['credentials']['usernames'] automatically on success
                     new_usernames = [u for u in config['credentials']['usernames'].keys() if u not in usernames_before]
                     
                     if new_usernames:
                         new_username = new_usernames[0]
-                        new_email = config['credentials']['usernames'][new_username]['email'].lower()
+                        new_user_data = config['credentials']['usernames'][new_username]
+                        new_email = new_user_data['email'].lower()
                         
-                        if new_email in existing_emails:
-                            # Duplicate detected - Rollback the change to config
+                        # 1. Reserved Name Check
+                        if new_username.lower() == "guest":
+                            del config['credentials']['usernames'][new_username]
+                            st.error("Registration failed: 'Guest' is a reserved username.")
+                        
+                        # 2. Duplicate Username Check (Extra safety)
+                        elif new_username.lower() in existing_usernames:
+                            # This is usually handled by the widget, but we check again for safety
+                            del config['credentials']['usernames'][new_username]
+                            st.error("Registration failed: Username already exists.")
+
+                        # 3. Duplicate Email Check
+                        elif new_email in existing_emails:
                             del config['credentials']['usernames'][new_username]
                             st.error("Registration failed: Email already registered.")
+                            
                         else:
-                            # Real success
-                            save_users_config(config)
-                            registration_success_dialog()
-                    else:
-                        # authenticator returned True but no user in dict? 
-                        # This can happen if the form was re-rendered after success
-                        pass
+                            # All checks passed
+                            if save_users_config(config):
+                                registration_success_dialog()
+                            else:
+                                st.error("Registration failed: Could not sync with cloud storage.")
             except Exception as e:
                 st.error(f"Registration failed: {e}")
         
