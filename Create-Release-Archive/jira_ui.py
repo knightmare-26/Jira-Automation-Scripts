@@ -398,6 +398,11 @@ def render_landing_page():
 
     st.markdown("<p style='text-align: center; color: gray; font-size: 0.8em; margin-top: 2em;'>Note: Guest Mode data is session-only and will be cleared on refresh.</p>", unsafe_allow_html=True)
 
+# Helper for Supabase Auth state
+def get_auth_session():
+    if not supabase: return None
+    return supabase.auth.get_session()
+
 def main():
     if 'view' not in st.session_state:
         st.session_state.view = 'landing'
