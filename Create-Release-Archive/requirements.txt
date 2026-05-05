@@ -1,7 +1,7 @@
-streamlit==1.37.0
-pandas==2.2.1
-requests==2.31.0
-streamlit-authenticator==0.3.1
-pyyaml==6.0.1
+streamlit
+pandas
+requests
+streamlit-authenticator
+pyyaml
 supabase
-cryptography>=42.0.0
+cryptography
