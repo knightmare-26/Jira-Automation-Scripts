@@ -414,32 +414,43 @@ def main():
     # Check for authenticated session
     session = get_auth_session()
     if not session:
-        # Wrap the whole Auth UI in a centered container
+        # Improved styling for centered 4:3 box
         st.markdown("""
             <style>
+            .auth-wrapper {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 80vh;
+            }
             .auth-container {
-                max-width: 400px;
-                margin: 0 auto;
+                width: 500px;
+                aspect-ratio: 4 / 3;
                 padding: 2rem;
                 border: 1px solid #e0e0e0;
-                border-radius: 10px;
-                background-color: #f9f9f9;
+                border-radius: 12px;
+                background-color: #ffffff;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            }
+            .back-btn {
+                margin-bottom: 1rem;
             }
             </style>
         """, unsafe_allow_html=True)
 
-        st.markdown('<div class="auth-container">', unsafe_allow_html=True)
+        st.markdown('<div class="auth-wrapper"><div class="auth-container">', unsafe_allow_html=True)
         
-        if st.button("⬅️ Back to Home"):
+        if st.button("⬅️ Back"):
             st.session_state.view = 'landing'
             st.rerun()
 
         tab_login, tab_signup = st.tabs(["🔐 Sign In", "📝 Sign Up"])
         
         with tab_login:
+            st.subheader("Welcome back")
             username = st.text_input("Username", key="login_username")
             password = st.text_input("Password", type="password", key="login_password")
-            if st.button("Sign In"):
+            if st.button("Sign In", type="primary", use_container_width=True):
                 try:
                     user_res = supabase.table("profiles").select("email").eq("username", username).single().execute()
                     if user_res.data:
@@ -459,7 +470,7 @@ def main():
             password = st.text_input("Password", type="password", key="signup_password")
             confirm_password = st.text_input("Confirm Password", type="password", key="signup_confirm_password")
             
-            if st.button("Sign Up"):
+            if st.button("Sign Up", type="primary", use_container_width=True):
                 if password != confirm_password:
                     st.error("Passwords do not match!")
                 else:
@@ -487,7 +498,7 @@ def main():
                     except Exception as e:
                         st.error(f"Registration failed: {e}")
         
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('</div></div>', unsafe_allow_html=True)
         return
 
     # User is authenticated
