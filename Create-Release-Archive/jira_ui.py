@@ -419,7 +419,7 @@ def main():
         # Style for centered, fixed-width input fields
         st.markdown("""
             <style>
-            .stTextInput, .stButton {
+            .stTextInput, .stButton, .stTabs {
                 max-width: 400px;
                 margin-left: auto !important;
                 margin-right: auto !important;
@@ -427,18 +427,18 @@ def main():
             .auth-header {
                 max-width: 400px;
                 margin: 0 auto;
-                text-align: center;
+                text-align: right;
             }
             </style>
         """, unsafe_allow_html=True)
         
-        if st.sidebar.button("⬅️ Back"):
+        st.markdown('<div class="auth-header">', unsafe_allow_html=True)
+        if st.button("⬅️ Back"):
             st.session_state.view = 'landing'
             st.rerun()
-
-        st.markdown('<div class="auth-header">', unsafe_allow_html=True)
-        tab_login, tab_signup = st.tabs(["🔐 Sign In", "📝 Sign Up"])
         st.markdown('</div>', unsafe_allow_html=True)
+
+        tab_login, tab_signup = st.tabs(["🔐 Sign In", "📝 Sign Up"])
         
         with tab_login:
             st.subheader("Welcome back")
