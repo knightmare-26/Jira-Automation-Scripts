@@ -419,12 +419,17 @@ def main():
 
     # Check for authenticated session
     session = get_auth_session()
-    # Allow guests to bypass session check if they have a session state set
-    if not session and not st.session_state.get("is_guest"):
+    
+    # Identify user (prioritize session state, then check session)
+    user = st.session_state.get('user')
+    if not user and session:
+        user = session.user
+    
+    if not user and not st.session_state.get("is_guest"):
         # Style for centered, fixed-width input fields
         st.markdown("""
             <style>
-            .stTextInput, .stButton, .stTabs {
+            .stTextInput, .stButton {
                 max-width: 400px;
                 margin-left: auto !important;
                 margin-right: auto !important;
@@ -454,11 +459,7 @@ def main():
                     user_res = supabase.table("profiles").select("email").eq("username", username).single().execute()
                     if user_res.data:
                         email = user_res.data["email"]
-                        logger.info(f"Attempting login for: {email}")
                         auth_res = supabase.auth.sign_in_with_password({"email": email, "password": password})
-                        logger.info(f"Supabase Auth Response: {auth_res.user}")
-                        
-                        # Explicitly update state and session to force transition
                         st.session_state.user = auth_res.user
                         st.session_state.is_guest = False
                         st.session_state.view = 'app'
@@ -466,7 +467,6 @@ def main():
                     else:
                         st.error("User not found.")
                 except Exception as e:
-                    logger.error(f"Login failed: {e}")
                     st.error(f"Login failed: {e}")
         
         with tab_signup:
@@ -506,13 +506,6 @@ def main():
         return
 
     # User is authenticated
-    if session and hasattr(session, 'user'):
-        user = session.user
-    elif 'user' in st.session_state:
-        user = st.session_state.user
-    else:
-        user = None
-
     if user:
         # Get username from profiles table
         user_res = supabase.table("profiles").select("username").eq("id", user.id).single().execute()
