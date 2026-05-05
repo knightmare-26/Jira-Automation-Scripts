@@ -783,7 +783,7 @@ def main():
         with tab_v1:
             st.header("🚀 Create New Versions")
             if not current_selection_list:
-                st.warning("⚠️ No projects selected. Please go to the **Active workspace** tab to select projects.")
+                st.warning("⚠️ No projects selected. Please go to the Manage projects tab to select projects.")
             else:
                 st.write(f"**Active workspace:** {', '.join(current_selection_list)}")
                 new_versions_raw = st.text_input("Enter Version Names (comma separated)", placeholder="e.g. 2026Train1, 2026Train2", key="new_versions_input")
@@ -818,7 +818,7 @@ def main():
         with tab_v2:
             st.header("📦 Release & Archive")
             if not current_selection_list:
-                st.warning("⚠️ No projects selected. Please go to the **Active workspace** tab to select projects.")
+                st.warning("⚠️ No projects selected. Please go to the Manage projects tab to select projects.")
             else:
                 st.write(f"**Active workspace:** {', '.join(current_selection_list)}")
                 show_released_only = st.checkbox("Show only Released versions (not yet archived)", key="show_released_only")
@@ -881,7 +881,7 @@ def main():
         with tab_v3:
             st.header("✏️ Rename Versions")
             if not current_selection_list:
-                st.warning("⚠️ No projects selected. Please go to the **Active workspace** tab to select projects.")
+                st.warning("⚠️ No projects selected. Please go to the Manage projects tab to select projects.")
             else:
                 st.write(f"**Active workspace:** {', '.join(current_selection_list)}")
                 with st.spinner("Loading versions..."):
