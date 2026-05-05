@@ -422,13 +422,19 @@ def main():
         tab_login, tab_signup = st.tabs(["🔐 Sign In", "📝 Sign Up"])
         
         with tab_login:
-            email = st.text_input("Email", key="login_email")
+            username = st.text_input("Username", key="login_username")
             password = st.text_input("Password", type="password", key="login_password")
             if st.button("Sign In"):
                 try:
-                    auth_res = supabase.auth.sign_in_with_password({"email": email, "password": password})
-                    st.session_state.user = auth_res.user
-                    st.rerun()
+                    # Look up user email by username from profiles table
+                    user_res = supabase.table("profiles").select("email").eq("username", username).single().execute()
+                    if user_res.data:
+                        email = user_res.data["email"]
+                        auth_res = supabase.auth.sign_in_with_password({"email": email, "password": password})
+                        st.session_state.user = auth_res.user
+                        st.rerun()
+                    else:
+                        st.error("User not found.")
                 except Exception as e:
                     st.error(f"Login failed: {e}")
         
@@ -449,16 +455,24 @@ def main():
                         
                         # 2. Add to profiles table
                         if auth_res.user:
-                            supabase.table("profiles").insert({
-                                "id": auth_res.user.id,
-                                "username": username,
-                                "email": email
-                            }).execute()
-                            
-                            st.balloons()
-                            st.success("✅ Account created successfully! Redirecting...")
-                            time.sleep(2)
-                            st.rerun()
+                            try:
+                                supabase.table("profiles").insert({
+                                    "id": auth_res.user.id,
+                                    "username": username,
+                                    "email": email
+                                }).execute()
+                                
+                                st.balloons()
+                                st.success("✅ Account created successfully! Redirecting...")
+                                time.sleep(2)
+                                st.rerun()
+                            except Exception as db_e:
+                                if 'profiles_username_key' in str(db_e):
+                                    st.error("Registration failed: Username already taken.")
+                                elif 'profiles_email_key' in str(db_e):
+                                    st.error("Registration failed: Email already registered.")
+                                else:
+                                    st.error(f"Database error: {db_e}")
                     except Exception as e:
                         st.error(f"Registration failed: {e}")
         return
