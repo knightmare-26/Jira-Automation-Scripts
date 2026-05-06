@@ -611,10 +611,16 @@ def main():
         current_index = nav_options.index(st.session_state.current_page)
     except ValueError:
         current_index = 0
+# Sync with query params
+params = st.query_params
+if 'page' in params:
+    st.session_state.current_page = params['page']
 
-    page = st.sidebar.radio("Navigation", options=nav_options, index=current_index)
-    if page != st.session_state.current_page:
-        st.session_state.current_page = page
+page = st.sidebar.radio("Navigation", options=nav_options, index=current_index)
+if page != st.session_state.current_page:
+    st.session_state.current_page = page
+    st.query_params['page'] = page
+    st.rerun()
         st.query_params['page'] = page
         st.rerun()
 
