@@ -136,6 +136,26 @@ def archive_version(config, version_id, project_key, version_name):
         logger.error(f"Error archiving version {version_name} in project {project_key}: {e}")
         return False
 
+def rename_version(config, version_id, project_key, old_name, new_name):
+    """Rename a version."""
+    if not config or not config.get("API_BASE") or not config.get("AUTH"):
+        return False
+    
+    try:
+        r = requests.put(
+            f"{config['API_BASE']}/version/{version_id}",
+            auth=config['AUTH'],
+            headers=config['HEADERS'],
+            json={
+                "name": new_name
+            },
+        )
+        r.raise_for_status()
+        return True
+    except Exception as e:
+        logger.error(f"Error renaming version {old_name} to {new_name} in project {project_key}: {e}")
+        return False
+
 def get_user_info(config):
     """Fetch current user info to test Jira API credentials."""
     if not config or not config.get("API_BASE") or not config.get("AUTH"):
