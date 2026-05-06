@@ -510,8 +510,12 @@ def main():
                                 }).execute()
                                 
                                 st.balloons()
-                                st.success("✅ Account created successfully! Redirecting...")
-                                time.sleep(3)
+                                st.success("✅ Account created successfully!")
+                                st.session_state.username = ""
+                                st.session_state.email = ""
+                                st.session_state.password = ""
+                                st.session_state.confirm_password = ""
+                                time.sleep(2)
                                 st.rerun()
                             except Exception as db_e:
                                 if 'profiles_username_key' in str(db_e):
@@ -681,11 +685,10 @@ def main():
         with col_btn1:
             if st.button("Save Configuration", type="primary", use_container_width=True):
                 if save_jira_config(username, url, email, token):
-                    st.success("✅ Configuration saved successfully! Redirecting...")
-                    time.sleep(1) 
+                    st.success("✅ Configuration saved successfully!")
+                    time.sleep(1)
                     st.session_state.current_page = "📂 Manage Projects"
-                    st.rerun()
-        
+                    st.rerun()        
         with col_btn2:
             if st.button("🔍 Test Connection", use_container_width=True):
                 if not (url and email and token):
