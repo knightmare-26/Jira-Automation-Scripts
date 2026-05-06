@@ -538,10 +538,6 @@ def main():
             st.session_state.jira_config.get("JIRA_EMAIL"), 
             st.session_state.jira_config.get("JIRA_API_TOKEN")
         ])
-        
-        if is_config_valid and st.session_state.get('current_page') == "⚙️ Config":
-            st.session_state.current_page = "📂 Manage Projects"
-            st.rerun()
     else:
         username = "Guest" # Fallback for guest mode
         st.sidebar.title("Guest Mode")
