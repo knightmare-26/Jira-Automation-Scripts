@@ -743,6 +743,7 @@ def main():
                     st.divider()
                     if st.button("🚀 Go to: Manage Versions", use_container_width=True, type="primary"):
                         st.session_state.current_page = "🚀 Manage Versions"
+                        st.query_params['page'] = "🚀 Manage Versions"
                         st.rerun()
 
         with tab2:
