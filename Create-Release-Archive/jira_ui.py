@@ -730,6 +730,8 @@ def main():
                         managed_keys = load_managed_projects(username)
                         updated_managed = [k for k in managed_keys if k not in keys_to_rm]
                         if save_managed_projects(username, updated_managed):
+                            if 'selected_projects' not in st.session_state:
+                                st.session_state.selected_projects = set()
                             for k in keys_to_rm:
                                 st.session_state.selected_projects.discard(k)
                             st.success(f"🗑️ Removed {len(keys_to_rm)} projects!")
