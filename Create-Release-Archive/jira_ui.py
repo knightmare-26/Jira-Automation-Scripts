@@ -673,11 +673,18 @@ def main():
                     st.rerun()
         
         with col_btn2:
-            if valid:
-                if st.button("🔍 Test Connection", use_container_width=True):
+            if st.button("🔍 Test Connection", use_container_width=True):
+                if not (url and email and token):
+                    st.error("Please enter URL, Email, and Token to test.")
+                else:
                     with st.spinner("Validating credentials..."):
-                        # Test by fetching the current user from Jira
-                        if jira_utils.get_user_info(st.session_state.jira_config):
+                        # Prepare temporary config for testing
+                        test_config = {
+                            "API_BASE": f"{url}/rest/api/3",
+                            "AUTH": (email, token),
+                            "HEADERS": {"Accept": "application/json", "Content-Type": "application/json"}
+                        }
+                        if jira_utils.get_user_info(test_config):
                             st.success("✅ Connection Successful! API Token is valid.")
                         else:
                             st.error("❌ Connection Failed. Please check your URL, Email, and API Token.")
