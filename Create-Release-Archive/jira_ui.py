@@ -117,9 +117,12 @@ def load_managed_projects(username):
 
     if supabase:
         try:
-            response = supabase.table("user_settings").select("managed_projects").eq("username", username).execute()
-            if response.data:
-                return response.data[0].get("managed_projects", [])
+            user_res = supabase.table("profiles").select("id").eq("username", username).single().execute()
+            if user_res.data:
+                user_id = user_res.data["id"]
+                response = supabase.table("user_settings").select("managed_projects").eq("user_id", user_id).execute()
+                if response.data:
+                    return response.data[0].get("managed_projects", [])
         except Exception as e:
             logger.error(f"Supabase load error for {username}: {e}")
 
@@ -140,12 +143,16 @@ def save_managed_projects(username, projects):
 
     if supabase:
         try:
-            supabase.table("user_settings").upsert({
-                "username": username,
-                "managed_projects": projects
-            }).execute()
-            st.cache_data.clear()
-            return True
+            user_res = supabase.table("profiles").select("id").eq("username", username).single().execute()
+            if user_res.data:
+                user_id = user_res.data["id"]
+                res = supabase.table("user_settings").upsert({
+                    "user_id": user_id,
+                    "managed_projects": projects
+                }).execute()
+                logger.info(f"Supabase save response for {username}: {res.data}")
+                st.cache_data.clear()
+                return True
         except Exception as e:
             logger.error(f"Supabase save error for {username}: {e}")
 
@@ -166,9 +173,12 @@ def load_shortcuts(username):
 
     if supabase:
         try:
-            response = supabase.table("user_settings").select("shortcuts").eq("username", username).execute()
-            if response.data:
-                return response.data[0].get("shortcuts", {})
+            user_res = supabase.table("profiles").select("id").eq("username", username).single().execute()
+            if user_res.data:
+                user_id = user_res.data["id"]
+                response = supabase.table("user_settings").select("shortcuts").eq("user_id", user_id).execute()
+                if response.data:
+                    return response.data[0].get("shortcuts", {})
         except Exception as e:
             logger.error(f"Supabase load shortcuts error for {username}: {e}")
 
@@ -187,10 +197,14 @@ def save_shortcuts(username, shortcuts):
 
     if supabase:
         try:
-            supabase.table("user_settings").upsert({
-                "username": username,
-                "shortcuts": shortcuts
-            }).execute()
+            user_res = supabase.table("profiles").select("id").eq("username", username).single().execute()
+            if user_res.data:
+                user_id = user_res.data["id"]
+                res = supabase.table("user_settings").upsert({
+                    "user_id": user_id,
+                    "shortcuts": shortcuts
+                }).execute()
+                logger.info(f"Supabase save shortcuts response for {username}: {res.data}")
         except Exception as e:
             logger.error(f"Supabase save shortcuts error for {username}: {e}")
 
