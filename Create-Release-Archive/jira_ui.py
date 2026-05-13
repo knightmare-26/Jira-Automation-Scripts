@@ -1103,11 +1103,6 @@ def main():
                 if 'filter_mappings' not in st.session_state:
                     st.session_state.filter_mappings = [{"old": None, "new": None}]
                 
-                # Option to reset mappings
-                if st.button("🧹 Clear All Mappings", key="clear_filter_maps"):
-                    st.session_state.filter_mappings = [{"old": None, "new": None}]
-                    st.rerun()
-
                 # Fetch versions for active workspace to populate dropdowns
                 with st.spinner("Loading versions for active workspace..."):
                     all_v_names = get_versions_for_projects_cached(username, config_tuple, current_selection_list)
