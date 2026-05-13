@@ -1103,8 +1103,8 @@ def main():
 
                 # Render Header Row
                 h_col1, h_col2, h_col3 = st.columns([4, 4, 1])
-                h_col1.write("**Search for (Old Version)**")
-                h_col2.write("**Replace with (New Version)**")
+                h_col1.write("**Old Version name**")
+                h_col2.write("**New Version name**")
 
                 # Render mapping rows
                 for i, mapping in enumerate(st.session_state.filter_mappings):
