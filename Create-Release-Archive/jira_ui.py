@@ -1096,15 +1096,16 @@ def main():
             # Replacement Logic
             if selected_filters:
                 st.divider()
-                st.subheader("Version renaming")
+                st.subheader("🔄 Sync Version Names in JQL")
+                st.write("Map versions to update across your selected Jira filters.")
 
                 # Initialize mappings in session state
                 if 'filter_mappings' not in st.session_state:
-                    st.session_state.filter_mappings = [{"old": None, "new": ""}]
+                    st.session_state.filter_mappings = [{"old": None, "new": None}]
                 
                 # Option to reset mappings
                 if st.button("🧹 Clear All Mappings", key="clear_filter_maps"):
-                    st.session_state.filter_mappings = [{"old": None, "new": ""}]
+                    st.session_state.filter_mappings = [{"old": None, "new": None}]
                     st.rerun()
 
                 # Fetch versions for active workspace to populate dropdowns
@@ -1113,7 +1114,7 @@ def main():
 
                 # Function to add a row
                 def add_mapping_row():
-                    st.session_state.filter_mappings.append({"old": None, "new": ""})
+                    st.session_state.filter_mappings.append({"old": None, "new": None})
 
                 # Function to remove a row
                 def remove_mapping_row(index):
@@ -1122,27 +1123,27 @@ def main():
 
                 # Render Header Row
                 h_col1, h_col2, h_col3 = st.columns([4, 4, 1])
-                h_col1.write("**Old Version**")
-                h_col2.write("**New Version**")
+                h_col1.write("**Search for (Old Version)**")
+                h_col2.write("**Replace with (New Version)**")
 
                 # Render mapping rows
                 for i, mapping in enumerate(st.session_state.filter_mappings):
                     m_col1, m_col2, m_col3 = st.columns([4, 4, 1])
                     
-                    st.session_state.filter_mappings[i]["old"] = m_col1.selectbox(
+                    st.session_state.filter_mappings[i]["old"] = m_col1.text_input(
                         f"Old Version {i+1}", 
-                        options=all_v_names, 
+                        value=mapping["old"] if mapping["old"] else "", 
                         key=f"old_v_map_{i}", 
-                        index=all_v_names.index(mapping["old"]) if mapping["old"] in all_v_names else None,
-                        placeholder="Select Old Version",
+                        placeholder="e.g. 2026Train1",
                         label_visibility="collapsed"
                     )
                     
-                    st.session_state.filter_mappings[i]["new"] = m_col2.text_input(
+                    st.session_state.filter_mappings[i]["new"] = m_col2.selectbox(
                         f"New Version {i+1}", 
-                        value=mapping["new"], 
+                        options=all_v_names, 
                         key=f"new_v_map_{i}", 
-                        placeholder="Enter New Version",
+                        index=all_v_names.index(mapping["new"]) if mapping["new"] in all_v_names else None,
+                        placeholder="Select New Version",
                         label_visibility="collapsed"
                     )
                     
