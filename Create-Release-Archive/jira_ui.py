@@ -983,7 +983,6 @@ def main():
                     available_versions = sorted(list(set([v['name'] for v in all_v_details if not v.get("archived")])))
                 
                 # Dynamic Mapping UX for Rename
-                st.subheader("Version Renaming Mappings")
                 
                 def add_rename_row():
                     st.session_state.rename_mappings.append({"old": None, "new": ""})
@@ -1069,18 +1068,25 @@ def main():
             if target_names:
                 if st.button("🔍 Validate and Load Filters", use_container_width=True):
                     resolved = []
-                    with st.status("Validating filters...") as status:
+                    missing = []
+                    with st.spinner("Validating filters..."):
                         for name in target_names:
                             f = jira_utils.get_filter_by_name(st.session_state.jira_config, name)
                             if f:
                                 resolved.append(f)
-                                st.success(f"Found and validated: {name}")
                             else:
-                                st.warning(f"Filter '{name}' not found.")
+                                missing.append(name)
+                    
+                    if missing:
+                        for name in missing:
+                            st.warning(f"Filter '{name}' not found.")
                     
                     if resolved:
                         st.session_state.manual_filters = resolved
-                        st.success(f"Loaded {len(resolved)} valid filters.")
+                        if not missing:
+                            st.success("✅ Filters loaded")
+                        else:
+                            st.info(f"Loaded {len(resolved)} filters ({len(missing)} missing).")
                     else:
                         st.error("No valid filters were found from the provided names.")
 
