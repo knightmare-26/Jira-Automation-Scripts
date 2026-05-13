@@ -1029,6 +1029,11 @@ def main():
                     if len(st.session_state.filter_mappings) > 1:
                         st.session_state.filter_mappings.pop(index)
 
+                # Render Header Row
+                h_col1, h_col2, h_col3 = st.columns([4, 4, 1])
+                h_col1.write("**Old Version**")
+                h_col2.write("**New Version**")
+
                 # Render mapping rows
                 for i, mapping in enumerate(st.session_state.filter_mappings):
                     m_col1, m_col2, m_col3 = st.columns([4, 4, 1])
@@ -1039,7 +1044,7 @@ def main():
                         key=f"old_v_map_{i}", 
                         index=all_v_names.index(mapping["old"]) if mapping["old"] in all_v_names else None,
                         placeholder="Select Old Version",
-                        label_visibility="collapsed" if i > 0 else "visible"
+                        label_visibility="collapsed"
                     )
                     
                     st.session_state.filter_mappings[i]["new"] = m_col2.text_input(
@@ -1047,10 +1052,10 @@ def main():
                         value=mapping["new"], 
                         key=f"new_v_map_{i}", 
                         placeholder="Enter New Version",
-                        label_visibility="collapsed" if i > 0 else "visible"
+                        label_visibility="collapsed"
                     )
                     
-                    if m_col3.button("X", key=f"remove_map_{i}", help="Remove this mapping"):
+                    if m_col3.button("X", key=f"remove_map_{i}", help="Remove this mapping", use_container_width=True):
                         remove_mapping_row(i)
                         st.rerun()
 
