@@ -979,7 +979,6 @@ def main():
 
         with tab_v4:
             st.header("🔍 Batch Update Filter JQL")
-            st.info("Update version names in your Jira filters by providing a comma-separated list of filter names.")
             
             filter_names_raw = st.text_input("Enter Filter Names (comma separated)", placeholder="Filter Name 1, Filter Name 2", key="filter_names_input")
             target_names = [n.strip() for n in filter_names_raw.split(",") if n.strip()]
@@ -1012,7 +1011,6 @@ def main():
             if selected_filters:
                 st.divider()
                 st.subheader("✏️ Version Mappings")
-                st.info("Specify which old versions should be replaced by which new versions. You can add multiple rows to map one old version to multiple new ones (this will create an 'IN' clause in JQL).")
 
                 # Initialize mappings in session state
                 if 'filter_mappings' not in st.session_state:
