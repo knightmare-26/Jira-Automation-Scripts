@@ -841,28 +841,27 @@ def main():
     elif page == "🚀 Manage Versions":
         st.title("🚀 Manage Versions")
         
-        # Define tab labels
         tab_labels = ["🚀 Create Versions", "📦 Release/Archive", "✏️ Rename", "🔍 Update Filters"]
         
-        # Determine default tab index
-        default_tab_index = 0
-        if st.session_state.get("active_tab") in tab_labels:
-            default_tab_index = tab_labels.index(st.session_state["active_tab"])
-            # Clear it so it doesn't persist forever
-            del st.session_state["active_tab"]
+        # Initialize active tab if not set
+        if "current_tab" not in st.session_state:
+            st.session_state.current_tab = tab_labels[0]
+            
+        # Helper to set tab
+        def set_tab(label):
+            st.session_state.current_tab = label
 
-        # If st.tabs supported index, we'd use it here. 
-        # Since it doesn't in standard Streamlit, we will use a workaround:
-        # We can use a radio or selectbox if we really need programmatic switching,
-        # but the user requested 'tabs'. 
-        # Actually, st.tabs doesn't support 'index' yet (as of May 2026 it might, 
-        # but in standard 1.x it doesn't). 
-        # I will check if I can use a different UI pattern or just stick to tabs.
-        
-        # Actually, let's stick to the current tab structure but ensure 
-        # the button in Rename Tab sets the state for the Filter tab.
-        
+        # Create tabs. Note: st.tabs doesn't support active index, 
+        # so this is a standard Streamlit approach.
         tab_v1, tab_v2, tab_v3, tab_v4 = st.tabs(tab_labels)
+
+        # Tab Logic
+        with tab_v1:
+            if st.session_state.current_tab != tab_labels[0]:
+                if st.button("Switch to Create"): set_tab(tab_labels[0]); st.rerun()
+            
+            st.header("🚀 Create New Versions")
+            # ... existing tab_v1 code ...
 
         current_selection_list = sorted(list(st.session_state.selected_projects))
 
@@ -1050,10 +1049,9 @@ def main():
 
                 # Navigation Handoff
                 if st.session_state.get("last_rename_mappings"):
-                    st.info("💡 You have successfully renamed versions. Would you like to update these versions in your Jira Filters?")
                     if st.button("🔍 Go to: Update Filters for these renames", use_container_width=True):
                         st.session_state.filter_mappings = [m.copy() for m in st.session_state.last_rename_mappings]
-                        st.query_params["tab"] = "🔍 Update Filters"
+                        st.session_state.current_tab = "🔍 Update Filters"
                         st.rerun()
 
         with tab_v4:
