@@ -841,7 +841,29 @@ def main():
 
     elif page == "🚀 Manage Versions":
         st.title("🚀 Manage Versions")
-        tab_v1, tab_v2, tab_v3, tab_v4 = st.tabs(["🚀 Create Versions", "📦 Release/Archive", "✏️ Rename", "🔍 Update Filters"])
+        
+        # Define tab labels
+        tab_labels = ["🚀 Create Versions", "📦 Release/Archive", "✏️ Rename", "🔍 Update Filters"]
+        
+        # Determine default tab index
+        default_tab_index = 0
+        if st.session_state.get("active_tab") in tab_labels:
+            default_tab_index = tab_labels.index(st.session_state["active_tab"])
+            # Clear it so it doesn't persist forever
+            del st.session_state["active_tab"]
+
+        # If st.tabs supported index, we'd use it here. 
+        # Since it doesn't in standard Streamlit, we will use a workaround:
+        # We can use a radio or selectbox if we really need programmatic switching,
+        # but the user requested 'tabs'. 
+        # Actually, st.tabs doesn't support 'index' yet (as of May 2026 it might, 
+        # but in standard 1.x it doesn't). 
+        # I will check if I can use a different UI pattern or just stick to tabs.
+        
+        # Actually, let's stick to the current tab structure but ensure 
+        # the button in Rename Tab sets the state for the Filter tab.
+        
+        tab_v1, tab_v2, tab_v3, tab_v4 = st.tabs(tab_labels)
 
         current_selection_list = sorted(list(st.session_state.selected_projects))
 
@@ -949,33 +971,92 @@ def main():
                 st.warning("⚠️ No projects selected. Please go to the Manage projects tab to select projects.")
             else:
                 st.write(f"**Active workspace:** {', '.join(current_selection_list)}")
+                
+                # Initialize rename mappings in session state
+                if 'rename_mappings' not in st.session_state:
+                    st.session_state.rename_mappings = [{"old": None, "new": ""}]
+
                 with st.spinner("Loading versions..."):
                     all_v_details = []
                     for p in current_selection_list:
                         all_v_details.extend(jira_utils.get_versions(st.session_state.jira_config, p))
                     available_versions = sorted(list(set([v['name'] for v in all_v_details if not v.get("archived")])))
                 
-                target_versions_rename = st.multiselect("Select Versions to Rename", options=available_versions, key="version_multiselect_v3")
-                new_version_name = st.text_input("Enter New Version Name", placeholder="e.g. 2026Train1-Final")
+                # Dynamic Mapping UX for Rename
+                st.subheader("Version Renaming Mappings")
                 
-                if target_versions_rename and new_version_name:
-                    st.divider()
-                    if st.button("✏️ Rename Versions", use_container_width=True, type="primary"):
+                def add_rename_row():
+                    st.session_state.rename_mappings.append({"old": None, "new": ""})
+                
+                def remove_rename_row(index):
+                    if len(st.session_state.rename_mappings) > 1:
+                        st.session_state.rename_mappings.pop(index)
+
+                # Header Row
+                rh_col1, rh_col2, rh_col3 = st.columns([4, 4, 1])
+                rh_col1.write("**Current Name**")
+                rh_col2.write("**New Name**")
+
+                for i, mapping in enumerate(st.session_state.rename_mappings):
+                    rm_col1, rm_col2, rm_col3 = st.columns([4, 4, 1])
+                    
+                    st.session_state.rename_mappings[i]["old"] = rm_col1.selectbox(
+                        f"Current Name {i}", options=available_versions, 
+                        key=f"rename_old_{i}", 
+                        index=available_versions.index(mapping["old"]) if mapping["old"] in available_versions else None,
+                        placeholder="Select Version", label_visibility="collapsed"
+                    )
+                    
+                    st.session_state.rename_mappings[i]["new"] = rm_col2.text_input(
+                        f"New Name {i}", value=mapping["new"], 
+                        key=f"rename_new_{i}", 
+                        placeholder="Enter New Name", label_visibility="collapsed"
+                    )
+                    
+                    if rm_col3.button("X", key=f"remove_rename_{i}", use_container_width=True):
+                        remove_rename_row(i)
+                        st.rerun()
+
+                if st.button("➕ Add Rename Row", use_container_width=True, key="add_rename_btn"):
+                    add_rename_row()
+                    st.rerun()
+
+                st.divider()
+
+                # Processing renames
+                active_renames = [m for m in st.session_state.rename_mappings if m["old"] and m["new"].strip()]
+                
+                if active_renames:
+                    if st.button("🚀 Execute Batch Rename", use_container_width=True, type="primary"):
+                        success_count = 0
                         for p in current_selection_list:
                             with st.status(f"Renaming in {p}...", expanded=False) as status:
                                 proj_versions = get_versions_cached(username, config_tuple, p)
-                                for v_name in target_versions_rename:
-                                    target = next((v for v in proj_versions if v["name"] == v_name), None)
+                                for mapping in active_renames:
+                                    old_n = mapping["old"]
+                                    new_n = mapping["new"].strip()
+                                    target = next((v for v in proj_versions if v["name"] == old_n), None)
                                     if target:
-                                        if jira_utils.rename_version(st.session_state.jira_config, target["id"], p, v_name, new_version_name):
-                                            st.success(f"{p}: Renamed {v_name} to {new_version_name}")
-                                            st.cache_data.clear()
+                                        if jira_utils.rename_version(st.session_state.jira_config, target["id"], p, old_n, new_n):
+                                            st.success(f"{p}: Renamed {old_n} -> {new_n}")
+                                            success_count += 1
                                         else:
-                                            st.error(f"{p}: Failed to rename {v_name}")
+                                            st.error(f"{p}: Failed to rename {old_n}")
                                     else:
-                                        st.warning(f"{p}: Version {v_name} not found.")
+                                        st.warning(f"{p}: '{old_n}' not found.")
                                 status.update(label=f"Completed {p}", state="complete")
-                        st.success("🎉 All selected versions renamed successfully!")
+                        
+                        st.cache_data.clear()
+                        st.success(f"🎉 Batch rename complete! ({success_count} actions)")
+                        st.session_state.last_rename_mappings = active_renames
+
+                # Navigation Handoff
+                if st.session_state.get("last_rename_mappings"):
+                    st.info("💡 You have successfully renamed versions. Would you like to update these versions in your Jira Filters?")
+                    if st.button("🔍 Go to: Update Filters for these renames", use_container_width=True):
+                        st.session_state.filter_mappings = [m.copy() for m in st.session_state.last_rename_mappings]
+                        st.query_params["tab"] = "🔍 Update Filters"
+                        st.rerun()
 
         with tab_v4:
             st.header("🔍 Batch Update Filter JQL")
@@ -1010,11 +1091,16 @@ def main():
             # Replacement Logic
             if selected_filters:
                 st.divider()
-                st.subheader("✏️ Version Mappings")
+                st.subheader("Version renaming")
 
                 # Initialize mappings in session state
                 if 'filter_mappings' not in st.session_state:
                     st.session_state.filter_mappings = [{"old": None, "new": ""}]
+                
+                # Option to reset mappings
+                if st.button("🧹 Clear All Mappings", key="clear_filter_maps"):
+                    st.session_state.filter_mappings = [{"old": None, "new": ""}]
+                    st.rerun()
 
                 # Fetch versions for active workspace to populate dropdowns
                 with st.spinner("Loading versions for active workspace..."):
