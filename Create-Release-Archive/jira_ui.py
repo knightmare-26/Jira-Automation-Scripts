@@ -1185,11 +1185,12 @@ def main():
                                     st.write(f"**Original JQL:** `{current_jql}`")
                                     st.write(f"**Updated JQL:** `{new_jql}`")
                                     
-                                    if jira_utils.update_filter_jql(st.session_state.jira_config, f["id"], new_jql):
+                                    success, err = jira_utils.update_filter_jql(st.session_state.jira_config, f["id"], new_jql)
+                                    if success:
                                         st.success(f"Successfully updated filter: {f['name']}")
                                         f["jql"] = new_jql
                                     else:
-                                        st.error(f"Failed to update filter: {f['name']}")
+                                        st.error(f"Failed to update filter: {f['name']}\n\n**Error:** {err}")
                                 
                                 status.update(label=f"Finished {f['name']}", state="complete")
                         

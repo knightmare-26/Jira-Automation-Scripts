@@ -223,9 +223,9 @@ def get_filters(config):
     return filters
 
 def update_filter_jql(config, filter_id, new_jql):
-    """Update the JQL of a specific filter."""
+    """Update the JQL of a specific filter. Returns (Success, ErrorMsg)."""
     if not config or not config.get("API_BASE") or not config.get("AUTH"):
-        return False
+        return False, "Missing Jira Configuration"
     
     try:
         url = clean_url(f"{config['API_BASE']}/filter/{filter_id}")
@@ -235,15 +235,15 @@ def update_filter_jql(config, filter_id, new_jql):
             headers=config['HEADERS'],
             json={"jql": new_jql}
         )
-        if r.status_code != 200:
-            logger.error(f"Error updating filter {filter_id}: {r.status_code} - {r.text}")
-        r.raise_for_status()
-        return True
+        if r.status_code == 200:
+            return True, None
+        else:
+            err_msg = f"{r.status_code}: {r.text}"
+            logger.error(f"Error updating filter {filter_id}: {err_msg}")
+            return False, err_msg
     except Exception as e:
-        # If not already logged above
-        if not (isinstance(e, requests.exceptions.HTTPError) and r.status_code != 200):
-            logger.error(f"Error updating filter {filter_id}: {e}")
-        return False
+        logger.error(f"Error updating filter {filter_id}: {e}")
+        return False, str(e)
 
 def get_filter_by_name(config, filter_name):
     """Search for a filter by name and return its details."""
