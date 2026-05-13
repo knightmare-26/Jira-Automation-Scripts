@@ -14,6 +14,7 @@ from supabase import create_client, Client
 import time
 from datetime import datetime, timedelta
 from cryptography.fernet import Fernet
+import re
 
 # Encryption Setup
 ENCRYPTION_KEY = st.secrets.get("ENCRYPTION_KEY")
@@ -103,6 +104,32 @@ def safe_log_error(msg, error=None):
     if "@" in clean_error:
         clean_error = "[REDACTED_EMAIL_OR_CONTENT]"
     logger.error(f"{msg}: {clean_error}")
+
+def update_jql_version(jql, old_version, new_version):
+    """
+    Surgically update fixVersion in JQL.
+    Handles equality (=) and membership (IN) patterns.
+    """
+    # Pass 1: fixVersion = "old" or fixVersion = old
+    eq_pattern = rf"(?i)(fixVersion\s*=\s*)(['\"]?){re.escape(old_version)}\2"
+    jql = re.sub(eq_pattern, rf"\1\g<2>{new_version}\g<2>", jql)
+    
+    # Pass 2: fixVersion in (...)
+    def replace_in_clause(match):
+        prefix = match.group(1) # fixVersion in (
+        content = match.group(2) # ... values ...
+        suffix = match.group(3) # )
+        
+        # In the content, replace the old version
+        # It could be "old", old, or 'old'
+        sub_pattern = rf"(^|[\s,])(['\"]?){re.escape(old_version)}\2(?=$|[\s,])"
+        new_content = re.sub(sub_pattern, rf"\1\g<2>{new_version}\g<2>", content)
+        return f"{prefix}{new_content}{suffix}"
+
+    in_pattern = rf"(?i)(fixVersion\s+in\s*\()([^)]*)(\))"
+    jql = re.sub(in_pattern, replace_in_clause, jql)
+    
+    return jql
 
 file_handler = logging.FileHandler("jira_automation_runs.log")
 file_handler.setFormatter(
@@ -791,7 +818,7 @@ def main():
 
     elif page == "🚀 Manage Versions":
         st.title("🚀 Manage Versions")
-        tab_v1, tab_v2, tab_v3 = st.tabs(["🚀 Create Versions", "📦 Release/Archive", "✏️ Rename"])
+        tab_v1, tab_v2, tab_v3, tab_v4 = st.tabs(["🚀 Create Versions", "📦 Release/Archive", "✏️ Rename", "🔍 Update Filters"])
 
         current_selection_list = sorted(list(st.session_state.selected_projects))
 
@@ -926,6 +953,54 @@ def main():
                                         st.warning(f"{p}: Version {v_name} not found.")
                                 status.update(label=f"Completed {p}", state="complete")
                         st.success("🎉 All selected versions renamed successfully!")
+
+        with tab_v4:
+            st.header("🔍 Batch Update Filter JQL")
+            st.info("This tool allows you to find and replace version names within your Jira filters. It only lists filters you have permission to edit.")
+            
+            if st.button("🔄 Fetch My Editable Filters", use_container_width=True):
+                with st.spinner("Fetching filters..."):
+                    filters = jira_utils.get_filters(st.session_state.jira_config)
+                    if filters:
+                        st.session_state.available_filters = filters
+                        st.success(f"Found {len(filters)} editable filters.")
+                    else:
+                        st.warning("No editable filters found or error fetching them.")
+            
+            if "available_filters" in st.session_state and st.session_state.available_filters:
+                filter_options = {f"{f['name']} (ID: {f['id']})": f for f in st.session_state.available_filters}
+                selected_filter_names = st.multiselect("Select Filters to Update", options=list(filter_options.keys()), key="filter_multiselect")
+                
+                col_f1, col_f2 = st.columns(2)
+                old_v_name = col_f1.text_input("Old Version Name", placeholder="e.g. 2026Train1", key="old_v_filter")
+                new_v_name = col_f2.text_input("New Version Name", placeholder="e.g. 2026Train1-Final", key="new_v_filter")
+                
+                if selected_filter_names and old_v_name and new_v_name:
+                    st.divider()
+                    if st.button("🚀 Update Selected Filters", type="primary", use_container_width=True):
+                        selected_filters = [filter_options[name] for name in selected_filter_names]
+                        
+                        for f in selected_filters:
+                            with st.status(f"Processing filter: {f['name']}...", expanded=True) as status:
+                                current_jql = f.get("jql", "")
+                                new_jql = update_jql_version(current_jql, old_v_name, new_v_name)
+                                
+                                if new_jql == current_jql:
+                                    st.info(f"No occurrences of '{old_v_name}' found in JQL for {f['name']}.")
+                                else:
+                                    st.write(f"**Original JQL:** `{current_jql}`")
+                                    st.write(f"**Updated JQL:** `{new_jql}`")
+                                    
+                                    if jira_utils.update_filter_jql(st.session_state.jira_config, f["id"], new_jql):
+                                        st.success(f"Successfully updated filter: {f['name']}")
+                                        # Update the local session state so the change is reflected if reused
+                                        f["jql"] = new_jql
+                                    else:
+                                        st.error(f"Failed to update filter: {f['name']}")
+                                
+                                status.update(label=f"Finished {f['name']}", state="complete")
+                        
+                        st.success("🎉 Batch filter update completed!")
 
 if __name__ == "__main__":
     main()

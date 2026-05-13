@@ -168,3 +168,59 @@ def get_user_info(config):
     except Exception as e:
         logger.error(f"Error validating credentials: {e}")
         return None
+
+def get_filters(config):
+    """Fetch all editable filters for the current user."""
+    if not config or not config.get("API_BASE") or not config.get("AUTH"):
+        return []
+    
+    filters = []
+    start_at = 0
+    max_results = 50
+    
+    while True:
+        try:
+            params = {
+                "expand": "jql,editable",
+                "startAt": start_at,
+                "maxResults": max_results
+            }
+            r = requests.get(
+                f"{config['API_BASE']}/filter/search", 
+                auth=config['AUTH'], 
+                headers=config['HEADERS'],
+                params=params
+            )
+            r.raise_for_status()
+            data = r.json()
+            
+            # Filter for editable filters
+            batch = [f for f in data.get("values", []) if f.get("editable")]
+            filters.extend(batch)
+            
+            if data.get("isLast", True) or not data.get("values"):
+                break
+            start_at += len(data.get("values", []))
+        except Exception as e:
+            logger.error(f"Error fetching filters: {e}")
+            break
+            
+    return filters
+
+def update_filter_jql(config, filter_id, new_jql):
+    """Update the JQL of a specific filter."""
+    if not config or not config.get("API_BASE") or not config.get("AUTH"):
+        return False
+    
+    try:
+        r = requests.put(
+            f"{config['API_BASE']}/filter/{filter_id}",
+            auth=config['AUTH'],
+            headers=config['HEADERS'],
+            json={"jql": new_jql}
+        )
+        r.raise_for_status()
+        return True
+    except Exception as e:
+        logger.error(f"Error updating filter {filter_id}: {e}")
+        return False
