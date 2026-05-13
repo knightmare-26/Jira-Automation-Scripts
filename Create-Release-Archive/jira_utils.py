@@ -185,8 +185,10 @@ def get_filters(config):
                 "startAt": start_at,
                 "maxResults": max_results
             }
+            # Remove trailing slash from base if present to avoid //rest
+            base_url = config['API_BASE'].rstrip('/')
             r = requests.get(
-                f"{config['API_BASE']}/filter/search", 
+                f"{base_url}/filter/search", 
                 auth=config['AUTH'], 
                 headers=config['HEADERS'],
                 params=params
@@ -194,8 +196,15 @@ def get_filters(config):
             r.raise_for_status()
             data = r.json()
             
+            # Debug: Log total found and a sample of the first filter's flags
+            all_values = data.get("values", [])
+            logger.info(f"Fetched {len(all_values)} filters in this batch. Total in Jira: {data.get('total')}")
+            if all_values:
+                sample = all_values[0]
+                logger.info(f"Sample Filter - Name: {sample.get('name')}, Editable: {sample.get('editable')}")
+
             # Filter for editable filters
-            batch = [f for f in data.get("values", []) if f.get("editable")]
+            batch = [f for f in all_values if f.get("editable")]
             filters.extend(batch)
             
             if data.get("isLast", True) or not data.get("values"):
@@ -213,8 +222,9 @@ def update_filter_jql(config, filter_id, new_jql):
         return False
     
     try:
+        base_url = config['API_BASE'].rstrip('/')
         r = requests.put(
-            f"{config['API_BASE']}/filter/{filter_id}",
+            f"{base_url}/filter/{filter_id}",
             auth=config['AUTH'],
             headers=config['HEADERS'],
             json={"jql": new_jql}
