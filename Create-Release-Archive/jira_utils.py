@@ -195,11 +195,12 @@ def get_filters(config):
     
     while True:
         try:
-            params = {
-                "expand": "jql,editable",
-                "startAt": start_at,
-                "maxResults": max_results
-            }
+            params = [
+                ("expand", "jql"),
+                ("expand", "editable"),
+                ("startAt", start_at),
+                ("maxResults", max_results)
+            ]
             url = clean_url(f"{config['API_BASE']}/filter/search")
             r = requests.get(
                 url, 
