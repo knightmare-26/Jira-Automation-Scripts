@@ -1043,14 +1043,6 @@ def main():
                         st.cache_data.clear()
                         st.success(f"🎉 Batch rename complete! ({success_count} actions)")
                         st.session_state.last_rename_mappings = active_renames
-
-                # Navigation Handoff
-                if st.session_state.get("last_rename_mappings"):
-                    if st.button("🔍 Go to: Update Filters for these renames", use_container_width=True):
-                        st.session_state.filter_mappings = [m.copy() for m in st.session_state.last_rename_mappings]
-                        st.session_state.current_tab = "🔍 Update Filters"
-                        st.rerun()
-
         with tab_v4:
             st.header("🔍 Batch Update Filter JQL")
             
