@@ -238,7 +238,7 @@ def update_filter_jql(config, filter_id, new_jql):
         if r.status_code == 200:
             return True, None
         else:
-            err_msg = f"{r.status_code}: {r.text}"
+            err_msg = f"{r.status_code}: {r.text} | Sent JQL: {new_jql}"
             logger.error(f"Error updating filter {filter_id}: {err_msg}")
             return False, err_msg
     except Exception as e:

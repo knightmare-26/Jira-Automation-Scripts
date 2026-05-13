@@ -114,21 +114,21 @@ def update_jql_version(jql, old_version, new_versions):
     if not new_versions:
         return jql
         
-    # Formatting helper for new versions based on original quoting
-    def format_new_list(quote_char):
-        return ", ".join([f"{quote_char}{v}{quote_char}" for v in new_versions])
+    # Formatting helper for new versions. 
+    # Always use double quotes for the new values to ensure JQL validity 
+    # with hyphens, spaces, and other special characters.
+    def format_new_list():
+        return ", ".join([f'"{v}"' for v in new_versions])
 
     # Pass 1: fixVersion = "old" or fixVersion = old
     def replace_equality(match):
         prefix = match.group(1) # fixVersion = 
-        quote = match.group(2)
         if len(new_versions) > 1:
             # Change "fixVersion =" to "fixVersion in ("
             field_part = re.split(r'\s*=\s*', prefix)[0]
-            in_list = format_new_list(quote)
-            return f"{field_part} in ({in_list})"
+            return f"{field_part} in ({format_new_list()})"
         else:
-            return f"{prefix}{quote}{new_versions[0]}{quote}"
+            return f"{prefix}\"{new_versions[0]}\""
 
     eq_pattern = rf"(?i)(fixVersion\s*=\s*)(['\"]?){re.escape(old_version)}\2"
     jql = re.sub(eq_pattern, replace_equality, jql)
@@ -141,9 +141,8 @@ def update_jql_version(jql, old_version, new_versions):
         
         # In the content, replace the old version
         def sub_repl(m):
-            sep = m.group(1)
-            quote = m.group(2)
-            return f"{sep}{format_new_list(quote)}"
+            sep = m.group(1) # whitespace or comma
+            return f"{sep}{format_new_list()}"
 
         sub_pattern = rf"(^|[\s,])(['\"]?){re.escape(old_version)}\2(?=$|[\s,])"
         new_content = re.sub(sub_pattern, sub_repl, content)
