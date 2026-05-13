@@ -857,10 +857,8 @@ def main():
 
         # Tab Logic
         with tab_v1:
+            current_selection_list = sorted(list(st.session_state.selected_projects))
 
-        current_selection_list = sorted(list(st.session_state.selected_projects))
-
-        with tab_v1:
             st.header("🚀 Create New Versions")
             if not current_selection_list:
                 st.warning("⚠️ No projects selected. Please go to the Manage projects tab to select projects.")
