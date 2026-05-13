@@ -105,14 +105,33 @@ def safe_log_error(msg, error=None):
         clean_error = "[REDACTED_EMAIL_OR_CONTENT]"
     logger.error(f"{msg}: {clean_error}")
 
-def update_jql_version(jql, old_version, new_version):
+def update_jql_version(jql, old_version, new_versions):
     """
     Surgically update fixVersion in JQL.
     Handles equality (=) and membership (IN) patterns.
+    new_versions is a list of strings.
     """
+    if not new_versions:
+        return jql
+        
+    # Formatting helper for new versions based on original quoting
+    def format_new_list(quote_char):
+        return ", ".join([f"{quote_char}{v}{quote_char}" for v in new_versions])
+
     # Pass 1: fixVersion = "old" or fixVersion = old
+    def replace_equality(match):
+        prefix = match.group(1) # fixVersion = 
+        quote = match.group(2)
+        if len(new_versions) > 1:
+            # Change "fixVersion =" to "fixVersion in ("
+            field_part = re.split(r'\s*=\s*', prefix)[0]
+            in_list = format_new_list(quote)
+            return f"{field_part} in ({in_list})"
+        else:
+            return f"{prefix}{quote}{new_versions[0]}{quote}"
+
     eq_pattern = rf"(?i)(fixVersion\s*=\s*)(['\"]?){re.escape(old_version)}\2"
-    jql = re.sub(eq_pattern, rf"\1\g<2>{new_version}\g<2>", jql)
+    jql = re.sub(eq_pattern, replace_equality, jql)
     
     # Pass 2: fixVersion in (...)
     def replace_in_clause(match):
@@ -121,9 +140,13 @@ def update_jql_version(jql, old_version, new_version):
         suffix = match.group(3) # )
         
         # In the content, replace the old version
-        # It could be "old", old, or 'old'
+        def sub_repl(m):
+            sep = m.group(1)
+            quote = m.group(2)
+            return f"{sep}{format_new_list(quote)}"
+
         sub_pattern = rf"(^|[\s,])(['\"]?){re.escape(old_version)}\2(?=$|[\s,])"
-        new_content = re.sub(sub_pattern, rf"\1\g<2>{new_version}\g<2>", content)
+        new_content = re.sub(sub_pattern, sub_repl, content)
         return f"{prefix}{new_content}{suffix}"
 
     in_pattern = rf"(?i)(fixVersion\s+in\s*\()([^)]*)(\))"
@@ -989,15 +1012,21 @@ def main():
             if selected_filters:
                 st.divider()
                 col_f1, col_f2 = st.columns(2)
-                old_v_name = col_f1.text_input("Old Version Name", placeholder="e.g. 2026Train1", key="old_v_filter")
-                new_v_name = col_f2.text_input("New Version Name", placeholder="e.g. 2026Train1-Final", key="new_v_filter")
                 
-                if old_v_name and new_v_name:
+                # Fetch versions for active workspace to populate dropdown
+                with st.spinner("Loading versions for active workspace..."):
+                    all_v_names = get_versions_for_projects_cached(username, config_tuple, current_selection_list)
+                
+                old_v_name = col_f1.selectbox("Old Version Name", options=all_v_names, key="old_v_filter", index=None, placeholder="Select Version")
+                new_v_names_raw = col_f2.text_input("New Version Names (comma separated)", placeholder="e.g. 2026Train1-Final, 2026Train2-Final", key="new_v_filter")
+                new_v_list = [v.strip() for v in new_v_names_raw.split(",") if v.strip()]
+                
+                if old_v_name and new_v_list:
                     if st.button("🚀 Update All Loaded Filters", type="primary", use_container_width=True):
                         for f in selected_filters:
                             with st.status(f"Processing filter: {f['name']}...", expanded=True) as status:
                                 current_jql = f.get("jql", "")
-                                new_jql = update_jql_version(current_jql, old_v_name, new_v_name)
+                                new_jql = update_jql_version(current_jql, old_v_name, new_v_list)
                                 
                                 if new_jql == current_jql:
                                     st.info(f"No occurrences of '{old_v_name}' found in JQL for {f['name']}.")
