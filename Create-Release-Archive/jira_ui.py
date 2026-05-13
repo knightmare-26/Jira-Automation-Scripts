@@ -956,56 +956,34 @@ def main():
 
         with tab_v4:
             st.header("🔍 Batch Update Filter JQL")
-            st.info("Update version names in your Jira filters. You can either fetch your editable filters or provide filter names directly.")
+            st.info("Update version names in your Jira filters by providing a comma-separated list of filter names.")
             
-            # Selection Mode
-            selection_mode = st.radio("Selection Mode", ["Fetch and Select", "Enter Names Directly"], horizontal=True)
+            filter_names_raw = st.text_input("Enter Filter Names (comma separated)", placeholder="Filter Name 1, Filter Name 2", key="filter_names_input")
+            target_names = [n.strip() for n in filter_names_raw.split(",") if n.strip()]
             
             selected_filters = []
             
-            if selection_mode == "Fetch and Select":
-                if st.button("🔄 Fetch My Editable Filters", use_container_width=True):
-                    with st.spinner("Fetching filters..."):
-                        filters = jira_utils.get_filters(st.session_state.jira_config)
-                        if filters:
-                            st.session_state.available_filters = filters
-                            st.success(f"Found {len(filters)} editable filters.")
-                        else:
-                            st.warning("No editable filters found or error fetching them.")
-                
-                if "available_filters" in st.session_state and st.session_state.available_filters:
-                    filter_options = {f"{f['name']} (ID: {f['id']})": f for f in st.session_state.available_filters}
-                    selected_names = st.multiselect("Select Filters to Update", options=list(filter_options.keys()), key="filter_multiselect")
-                    selected_filters = [filter_options[name] for name in selected_names]
-            
-            else:
-                filter_names_raw = st.text_area("Enter Filter Names (one per line)", placeholder="My Filter 1\nProject Alpha Release\nTeam Beta Sprint", key="filter_names_input")
-                target_names = [n.strip() for n in filter_names_raw.split("\n") if n.strip()]
-                
-                if target_names:
-                    if st.button("🔍 Validate and Load Filters", use_container_width=True):
-                        resolved = []
-                        with st.status("Validating filters...") as status:
-                            for name in target_names:
-                                f = jira_utils.get_filter_by_name(st.session_state.jira_config, name)
-                                if f:
-                                    if f.get("editable"):
-                                        resolved.append(f)
-                                        st.success(f"Found and validated: {name}")
-                                    else:
-                                        st.error(f"Filter '{name}' found but is NOT editable by you.")
-                                else:
-                                    st.warning(f"Filter '{name}' not found.")
-                        
-                        if resolved:
-                            st.session_state.manual_filters = resolved
-                            st.success(f"Loaded {len(resolved)} valid filters.")
-                        else:
-                            st.error("No valid/editable filters were found from the provided names.")
+            if target_names:
+                if st.button("🔍 Validate and Load Filters", use_container_width=True):
+                    resolved = []
+                    with st.status("Validating filters...") as status:
+                        for name in target_names:
+                            f = jira_utils.get_filter_by_name(st.session_state.jira_config, name)
+                            if f:
+                                resolved.append(f)
+                                st.success(f"Found and validated: {name}")
+                            else:
+                                st.warning(f"Filter '{name}' not found.")
+                    
+                    if resolved:
+                        st.session_state.manual_filters = resolved
+                        st.success(f"Loaded {len(resolved)} valid filters.")
+                    else:
+                        st.error("No valid filters were found from the provided names.")
 
-                if "manual_filters" in st.session_state:
-                    selected_filters = st.session_state.manual_filters
-                    st.write(f"**Loaded filters:** {', '.join([f['name'] for f in selected_filters])}")
+            if "manual_filters" in st.session_state:
+                selected_filters = st.session_state.manual_filters
+                st.write(f"**Loaded filters:** {', '.join([f['name'] for f in selected_filters])}")
 
             # Replacement Logic
             if selected_filters:

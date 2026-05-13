@@ -185,7 +185,7 @@ def get_user_info(config):
         return None
 
 def get_filters(config):
-    """Fetch all editable filters for the current user."""
+    """Fetch all filters for the current user."""
     if not config or not config.get("API_BASE") or not config.get("AUTH"):
         return []
     
@@ -195,12 +195,11 @@ def get_filters(config):
     
     while True:
         try:
-            params = [
-                ("expand", "jql"),
-                ("expand", "editable"),
-                ("startAt", start_at),
-                ("maxResults", max_results)
-            ]
+            params = {
+                "expand": "jql",
+                "startAt": start_at,
+                "maxResults": max_results
+            }
             url = clean_url(f"{config['API_BASE']}/filter/search")
             r = requests.get(
                 url, 
@@ -211,16 +210,8 @@ def get_filters(config):
             r.raise_for_status()
             data = r.json()
             
-            # Debug: Log total found and a sample of the first filter's flags
             all_values = data.get("values", [])
-            logger.info(f"Fetched {len(all_values)} filters in this batch. Total in Jira: {data.get('total')}")
-            if all_values:
-                sample = all_values[0]
-                logger.info(f"Sample Filter - Name: {sample.get('name')}, Editable: {sample.get('editable')}")
-
-            # Filter for editable filters
-            batch = [f for f in all_values if f.get("editable")]
-            filters.extend(batch)
+            filters.extend(all_values)
             
             if data.get("isLast", True) or not data.get("values"):
                 break
@@ -251,16 +242,15 @@ def update_filter_jql(config, filter_id, new_jql):
         return False
 
 def get_filter_by_name(config, filter_name):
-    """Search for a filter by name and return its details if editable."""
+    """Search for a filter by name and return its details."""
     if not config or not config.get("API_BASE") or not config.get("AUTH"):
         return None
     
     try:
-        params = [
-            ("filterName", filter_name),
-            ("expand", "jql"),
-            ("expand", "editable")
-        ]
+        params = {
+            "filterName": filter_name,
+            "expand": "jql"
+        }
         url = clean_url(f"{config['API_BASE']}/filter/search")
         r = requests.get(
             url, 
