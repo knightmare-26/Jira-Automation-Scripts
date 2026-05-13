@@ -1084,17 +1084,14 @@ def main():
             # Replacement Logic
             if selected_filters:
                 st.divider()
-                st.subheader("🔄 Sync Version Names in JQL")
-                st.write("Map versions to update across your selected Jira filters.")
 
                 # Initialize mappings in session state
                 if 'filter_mappings' not in st.session_state:
                     st.session_state.filter_mappings = [{"old": None, "new": None}]
-                
+
                 # Fetch versions for active workspace to populate dropdowns
                 with st.spinner("Loading versions for active workspace..."):
                     all_v_names = get_versions_for_projects_cached(username, config_tuple, current_selection_list)
-
                 # Function to add a row
                 def add_mapping_row():
                     st.session_state.filter_mappings.append({"old": None, "new": None})
