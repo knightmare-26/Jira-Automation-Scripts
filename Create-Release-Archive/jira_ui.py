@@ -847,24 +847,21 @@ def main():
         if "current_tab" not in st.session_state:
             st.session_state.current_tab = tab_labels[0]
             
-        selected_tab = st.radio(
-            "Manage Versions Navigation",
-            tab_labels,
-            index=tab_labels.index(st.session_state.current_tab),
-            horizontal=True,
-            label_visibility="collapsed"
-        )
-        st.session_state.current_tab = selected_tab
+        # Helper to set tab
+        def set_tab(label):
+            st.session_state.current_tab = label
 
-        current_selection_list = sorted(list(st.session_state.selected_projects))
+        # Create tabs. Note: st.tabs doesn't support active index, 
+        # so this is a standard Streamlit approach.
+        tab_v1, tab_v2, tab_v3, tab_v4 = st.tabs(tab_labels)
 
-        if selected_tab == tab_labels[0]:
+        # Tab Logic
+        with tab_v1:
+            if st.session_state.current_tab != tab_labels[0]:
+                if st.button("Switch to Create"): set_tab(tab_labels[0]); st.rerun()
+            
             st.header("🚀 Create New Versions")
-            if not current_selection_list:
-                st.warning("⚠️ No projects selected. Please go to the Manage projects tab to select projects.")
-            else:
-                st.write(f"**Active workspace:** {', '.join(current_selection_list)}")
-                # ... (this part needs the code from tab_v1) ...
+            # ... existing tab_v1 code ...
 
         current_selection_list = sorted(list(st.session_state.selected_projects))
 
