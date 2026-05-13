@@ -235,10 +235,14 @@ def update_filter_jql(config, filter_id, new_jql):
             headers=config['HEADERS'],
             json={"jql": new_jql}
         )
+        if r.status_code != 200:
+            logger.error(f"Error updating filter {filter_id}: {r.status_code} - {r.text}")
         r.raise_for_status()
         return True
     except Exception as e:
-        logger.error(f"Error updating filter {filter_id}: {e}")
+        # If not already logged above
+        if not (isinstance(e, requests.exceptions.HTTPError) and r.status_code != 200):
+            logger.error(f"Error updating filter {filter_id}: {e}")
         return False
 
 def get_filter_by_name(config, filter_name):
