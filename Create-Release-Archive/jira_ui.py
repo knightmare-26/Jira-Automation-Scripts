@@ -1043,6 +1043,8 @@ def main():
                         st.cache_data.clear()
                         st.success(f"🎉 Batch rename complete! ({success_count} actions)")
                         st.session_state.last_rename_mappings = active_renames
+                        st.session_state.rename_mappings = [{"old": None, "new": ""}]
+                        st.rerun()
         with tab_v4:
             st.header("🔍 Batch Update Filter JQL")
             
