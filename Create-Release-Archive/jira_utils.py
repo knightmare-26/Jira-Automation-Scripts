@@ -4,12 +4,20 @@ from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
+def clean_url(url):
+    """Ensure the URL doesn't have double slashes except for the protocol."""
+    if "://" in url:
+        protocol, path = url.split("://", 1)
+        return f"{protocol}://{path.replace('//', '/')}"
+    return url.replace("//", "/")
+
 def get_projects(config):
     """Fetch all available JIRA projects using provided config."""
     if not config or not config.get("API_BASE") or not config.get("AUTH"):
         return []
     try:
-        r = requests.get(f"{config['API_BASE']}/project", auth=config['AUTH'], headers=config['HEADERS'])
+        url = clean_url(f"{config['API_BASE']}/project")
+        r = requests.get(url, auth=config['AUTH'], headers=config['HEADERS'])
         r.raise_for_status()
         return r.json()
     except Exception as e:
@@ -21,7 +29,8 @@ def get_versions(config, project_key):
     if not config or not config.get("API_BASE") or not config.get("AUTH"):
         return []
     try:
-        r = requests.get(f"{config['API_BASE']}/project/{project_key}/versions", auth=config['AUTH'], headers=config['HEADERS'])
+        url = clean_url(f"{config['API_BASE']}/project/{project_key}/versions")
+        r = requests.get(url, auth=config['AUTH'], headers=config['HEADERS'])
         r.raise_for_status()
         return r.json()
     except Exception as e:
@@ -49,8 +58,9 @@ def create_version(config, project_key, version_name, start_date=None, release_d
         payload["releaseDate"] = release_date
 
     try:
+        url = clean_url(f"{config['API_BASE']}/version")
         r = requests.post(
-            f"{config['API_BASE']}/version",
+            url,
             auth=config['AUTH'],
             headers=config['HEADERS'],
             json=payload,
@@ -66,7 +76,8 @@ def get_version(config, version_id):
     if not config or not config.get("API_BASE") or not config.get("AUTH"):
         return None
     try:
-        r = requests.get(f"{config['API_BASE']}/version/{version_id}", auth=config['AUTH'], headers=config['HEADERS'])
+        url = clean_url(f"{config['API_BASE']}/version/{version_id}")
+        r = requests.get(url, auth=config['AUTH'], headers=config['HEADERS'])
         r.raise_for_status()
         return r.json()
     except Exception as e:
@@ -89,8 +100,9 @@ def release_version(config, version_id, project_key, version_name):
     combined_desc = f"{existing_desc}\n{new_log}".strip()
     
     try:
+        url = clean_url(f"{config['API_BASE']}/version/{version_id}")
         r = requests.put(
-            f"{config['API_BASE']}/version/{version_id}",
+            url,
             auth=config['AUTH'],
             headers=config['HEADERS'],
             json={
@@ -121,8 +133,9 @@ def archive_version(config, version_id, project_key, version_name):
     combined_desc = f"{existing_desc}\n{new_log}".strip()
     
     try:
+        url = clean_url(f"{config['API_BASE']}/version/{version_id}")
         r = requests.put(
-            f"{config['API_BASE']}/version/{version_id}",
+            url,
             auth=config['AUTH'],
             headers=config['HEADERS'],
             json={
@@ -142,8 +155,9 @@ def rename_version(config, version_id, project_key, old_name, new_name):
         return False
     
     try:
+        url = clean_url(f"{config['API_BASE']}/version/{version_id}")
         r = requests.put(
-            f"{config['API_BASE']}/version/{version_id}",
+            url,
             auth=config['AUTH'],
             headers=config['HEADERS'],
             json={
@@ -162,7 +176,8 @@ def get_user_info(config):
         return None
     try:
         # Jira API 3 endpoint to fetch self
-        r = requests.get(f"{config['API_BASE']}/myself", auth=config['AUTH'], headers=config['HEADERS'])
+        url = clean_url(f"{config['API_BASE']}/myself")
+        r = requests.get(url, auth=config['AUTH'], headers=config['HEADERS'])
         r.raise_for_status()
         return r.json()
     except Exception as e:
@@ -185,10 +200,9 @@ def get_filters(config):
                 "startAt": start_at,
                 "maxResults": max_results
             }
-            # Remove trailing slash from base if present to avoid //rest
-            base_url = config['API_BASE'].rstrip('/')
+            url = clean_url(f"{config['API_BASE']}/filter/search")
             r = requests.get(
-                f"{base_url}/filter/search", 
+                url, 
                 auth=config['AUTH'], 
                 headers=config['HEADERS'],
                 params=params
@@ -222,9 +236,9 @@ def update_filter_jql(config, filter_id, new_jql):
         return False
     
     try:
-        base_url = config['API_BASE'].rstrip('/')
+        url = clean_url(f"{config['API_BASE']}/filter/{filter_id}")
         r = requests.put(
-            f"{base_url}/filter/{filter_id}",
+            url,
             auth=config['AUTH'],
             headers=config['HEADERS'],
             json={"jql": new_jql}
