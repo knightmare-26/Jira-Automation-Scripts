@@ -1153,13 +1153,16 @@ def main():
                 # Gather and group mappings
                 final_mappings = {} # old -> list of news
                 for m in st.session_state.filter_mappings:
-                    if m["old"] and m["new"].strip():
-                        old_v = m["old"]
-                        new_v = m["new"].strip()
+                    old_v = m.get("old")
+                    new_v = m.get("new")
+
+                    if old_v and new_v and str(new_v).strip():
+                        new_v = str(new_v).strip()
                         if old_v not in final_mappings:
                             final_mappings[old_v] = []
                         if new_v not in final_mappings[old_v]:
                             final_mappings[old_v].append(new_v)
+
 
                 if final_mappings:
                     if st.button("🚀 Update All Loaded Filters", type="primary", use_container_width=True):
