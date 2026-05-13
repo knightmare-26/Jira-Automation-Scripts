@@ -1052,7 +1052,7 @@ def main():
                         label_visibility="collapsed" if i > 0 else "visible"
                     )
                     
-                    if m_col3.button("🗑️", key=f"remove_map_{i}", help="Remove this mapping"):
+                    if m_col3.button("X", key=f"remove_map_{i}", help="Remove this mapping"):
                         remove_mapping_row(i)
                         st.rerun()
 
