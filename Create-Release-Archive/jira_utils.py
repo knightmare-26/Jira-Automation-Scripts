@@ -249,3 +249,31 @@ def update_filter_jql(config, filter_id, new_jql):
     except Exception as e:
         logger.error(f"Error updating filter {filter_id}: {e}")
         return False
+
+def get_filter_by_name(config, filter_name):
+    """Search for a filter by name and return its details if editable."""
+    if not config or not config.get("API_BASE") or not config.get("AUTH"):
+        return None
+    
+    try:
+        params = [
+            ("filterName", filter_name),
+            ("expand", "jql,editable")
+        ]
+        url = clean_url(f"{config['API_BASE']}/filter/search")
+        r = requests.get(
+            url, 
+            auth=config['AUTH'], 
+            headers=config['HEADERS'],
+            params=params
+        )
+        r.raise_for_status()
+        data = r.json()
+        
+        for f in data.get("values", []):
+            if f.get("name") == filter_name:
+                return f
+    except Exception as e:
+        logger.error(f"Error finding filter '{filter_name}': {e}")
+    
+    return None

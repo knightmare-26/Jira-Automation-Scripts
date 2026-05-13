@@ -956,30 +956,66 @@ def main():
 
         with tab_v4:
             st.header("🔍 Batch Update Filter JQL")
-            st.info("This tool allows you to find and replace version names within your Jira filters. It only lists filters you have permission to edit.")
+            st.info("Update version names in your Jira filters. You can either fetch your editable filters or provide filter names directly.")
             
-            if st.button("🔄 Fetch My Editable Filters", use_container_width=True):
-                with st.spinner("Fetching filters..."):
-                    filters = jira_utils.get_filters(st.session_state.jira_config)
-                    if filters:
-                        st.session_state.available_filters = filters
-                        st.success(f"Found {len(filters)} editable filters.")
-                    else:
-                        st.warning("No editable filters found or error fetching them.")
+            # Selection Mode
+            selection_mode = st.radio("Selection Mode", ["Fetch and Select", "Enter Names Directly"], horizontal=True)
             
-            if "available_filters" in st.session_state and st.session_state.available_filters:
-                filter_options = {f"{f['name']} (ID: {f['id']})": f for f in st.session_state.available_filters}
-                selected_filter_names = st.multiselect("Select Filters to Update", options=list(filter_options.keys()), key="filter_multiselect")
+            selected_filters = []
+            
+            if selection_mode == "Fetch and Select":
+                if st.button("🔄 Fetch My Editable Filters", use_container_width=True):
+                    with st.spinner("Fetching filters..."):
+                        filters = jira_utils.get_filters(st.session_state.jira_config)
+                        if filters:
+                            st.session_state.available_filters = filters
+                            st.success(f"Found {len(filters)} editable filters.")
+                        else:
+                            st.warning("No editable filters found or error fetching them.")
                 
+                if "available_filters" in st.session_state and st.session_state.available_filters:
+                    filter_options = {f"{f['name']} (ID: {f['id']})": f for f in st.session_state.available_filters}
+                    selected_names = st.multiselect("Select Filters to Update", options=list(filter_options.keys()), key="filter_multiselect")
+                    selected_filters = [filter_options[name] for name in selected_names]
+            
+            else:
+                filter_names_raw = st.text_area("Enter Filter Names (one per line)", placeholder="My Filter 1\nProject Alpha Release\nTeam Beta Sprint", key="filter_names_input")
+                target_names = [n.strip() for n in filter_names_raw.split("\n") if n.strip()]
+                
+                if target_names:
+                    if st.button("🔍 Validate and Load Filters", use_container_width=True):
+                        resolved = []
+                        with st.status("Validating filters...") as status:
+                            for name in target_names:
+                                f = jira_utils.get_filter_by_name(st.session_state.jira_config, name)
+                                if f:
+                                    if f.get("editable"):
+                                        resolved.append(f)
+                                        st.success(f"Found and validated: {name}")
+                                    else:
+                                        st.error(f"Filter '{name}' found but is NOT editable by you.")
+                                else:
+                                    st.warning(f"Filter '{name}' not found.")
+                        
+                        if resolved:
+                            st.session_state.manual_filters = resolved
+                            st.success(f"Loaded {len(resolved)} valid filters.")
+                        else:
+                            st.error("No valid/editable filters were found from the provided names.")
+
+                if "manual_filters" in st.session_state:
+                    selected_filters = st.session_state.manual_filters
+                    st.write(f"**Loaded filters:** {', '.join([f['name'] for f in selected_filters])}")
+
+            # Replacement Logic
+            if selected_filters:
+                st.divider()
                 col_f1, col_f2 = st.columns(2)
                 old_v_name = col_f1.text_input("Old Version Name", placeholder="e.g. 2026Train1", key="old_v_filter")
                 new_v_name = col_f2.text_input("New Version Name", placeholder="e.g. 2026Train1-Final", key="new_v_filter")
                 
-                if selected_filter_names and old_v_name and new_v_name:
-                    st.divider()
-                    if st.button("🚀 Update Selected Filters", type="primary", use_container_width=True):
-                        selected_filters = [filter_options[name] for name in selected_filter_names]
-                        
+                if old_v_name and new_v_name:
+                    if st.button("🚀 Update All Loaded Filters", type="primary", use_container_width=True):
                         for f in selected_filters:
                             with st.status(f"Processing filter: {f['name']}...", expanded=True) as status:
                                 current_jql = f.get("jql", "")
@@ -993,8 +1029,7 @@ def main():
                                     
                                     if jira_utils.update_filter_jql(st.session_state.jira_config, f["id"], new_jql):
                                         st.success(f"Successfully updated filter: {f['name']}")
-                                        # Update the local session state so the change is reflected if reused
-                                        f["jql"] = new_jql
+                                        f["jql"] = new_jql # Keep local state updated
                                     else:
                                         st.error(f"Failed to update filter: {f['name']}")
                                 
