@@ -859,9 +859,6 @@ def main():
         with tab_v1:
             if st.session_state.current_tab != tab_labels[0]:
                 if st.button("Switch to Create"): set_tab(tab_labels[0]); st.rerun()
-            
-            st.header("🚀 Create New Versions")
-            # ... existing tab_v1 code ...
 
         current_selection_list = sorted(list(st.session_state.selected_projects))
 
