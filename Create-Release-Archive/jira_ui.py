@@ -1011,32 +1011,88 @@ def main():
             # Replacement Logic
             if selected_filters:
                 st.divider()
-                col_f1, col_f2 = st.columns(2)
-                
-                # Fetch versions for active workspace to populate dropdown
+                st.subheader("✏️ Version Mappings")
+                st.info("Specify which old versions should be replaced by which new versions. You can add multiple rows to map one old version to multiple new ones (this will create an 'IN' clause in JQL).")
+
+                # Initialize mappings in session state
+                if 'filter_mappings' not in st.session_state:
+                    st.session_state.filter_mappings = [{"old": None, "new": ""}]
+
+                # Fetch versions for active workspace to populate dropdowns
                 with st.spinner("Loading versions for active workspace..."):
                     all_v_names = get_versions_for_projects_cached(username, config_tuple, current_selection_list)
-                
-                old_v_name = col_f1.selectbox("Old Version Name", options=all_v_names, key="old_v_filter", index=None, placeholder="Select Version")
-                new_v_names_raw = col_f2.text_input("New Version Names (comma separated)", placeholder="e.g. 2026Train1-Final, 2026Train2-Final", key="new_v_filter")
-                new_v_list = [v.strip() for v in new_v_names_raw.split(",") if v.strip()]
-                
-                if old_v_name and new_v_list:
+
+                # Function to add a row
+                def add_mapping_row():
+                    st.session_state.filter_mappings.append({"old": None, "new": ""})
+
+                # Function to remove a row
+                def remove_mapping_row(index):
+                    if len(st.session_state.filter_mappings) > 1:
+                        st.session_state.filter_mappings.pop(index)
+
+                # Render mapping rows
+                for i, mapping in enumerate(st.session_state.filter_mappings):
+                    m_col1, m_col2, m_col3 = st.columns([4, 4, 1])
+                    
+                    st.session_state.filter_mappings[i]["old"] = m_col1.selectbox(
+                        f"Old Version {i+1}", 
+                        options=all_v_names, 
+                        key=f"old_v_map_{i}", 
+                        index=all_v_names.index(mapping["old"]) if mapping["old"] in all_v_names else None,
+                        placeholder="Select Old Version",
+                        label_visibility="collapsed" if i > 0 else "visible"
+                    )
+                    
+                    st.session_state.filter_mappings[i]["new"] = m_col2.text_input(
+                        f"New Version {i+1}", 
+                        value=mapping["new"], 
+                        key=f"new_v_map_{i}", 
+                        placeholder="Enter New Version",
+                        label_visibility="collapsed" if i > 0 else "visible"
+                    )
+                    
+                    if m_col3.button("🗑️", key=f"remove_map_{i}", help="Remove this mapping"):
+                        remove_mapping_row(i)
+                        st.rerun()
+
+                if st.button("➕ Add Mapping Row", use_container_width=True):
+                    add_mapping_row()
+                    st.rerun()
+
+                st.divider()
+
+                # Gather and group mappings
+                final_mappings = {} # old -> list of news
+                for m in st.session_state.filter_mappings:
+                    if m["old"] and m["new"].strip():
+                        old_v = m["old"]
+                        new_v = m["new"].strip()
+                        if old_v not in final_mappings:
+                            final_mappings[old_v] = []
+                        if new_v not in final_mappings[old_v]:
+                            final_mappings[old_v].append(new_v)
+
+                if final_mappings:
                     if st.button("🚀 Update All Loaded Filters", type="primary", use_container_width=True):
                         for f in selected_filters:
                             with st.status(f"Processing filter: {f['name']}...", expanded=True) as status:
                                 current_jql = f.get("jql", "")
-                                new_jql = update_jql_version(current_jql, old_v_name, new_v_list)
+                                new_jql = current_jql
+                                
+                                # Apply all unique old version replacements
+                                for old_v, new_v_list in final_mappings.items():
+                                    new_jql = update_jql_version(new_jql, old_v, new_v_list)
                                 
                                 if new_jql == current_jql:
-                                    st.info(f"No occurrences of '{old_v_name}' found in JQL for {f['name']}.")
+                                    st.info(f"No specified old versions found in JQL for {f['name']}.")
                                 else:
                                     st.write(f"**Original JQL:** `{current_jql}`")
                                     st.write(f"**Updated JQL:** `{new_jql}`")
                                     
                                     if jira_utils.update_filter_jql(st.session_state.jira_config, f["id"], new_jql):
                                         st.success(f"Successfully updated filter: {f['name']}")
-                                        f["jql"] = new_jql # Keep local state updated
+                                        f["jql"] = new_jql
                                     else:
                                         st.error(f"Failed to update filter: {f['name']}")
                                 
