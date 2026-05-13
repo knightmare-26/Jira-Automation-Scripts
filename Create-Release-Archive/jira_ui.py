@@ -667,7 +667,7 @@ def main():
         st.session_state.current_page = "📂 Manage Projects" if is_config_valid else "⚙️ Config"
 
     if is_config_valid:
-        nav_options = ["📂 Manage Projects", "🚀 Manage Versions", "⚙️ Config"]
+        nav_options = ["📂 Manage Projects", "🚀 Manage Versions", "🔍 Update Filters", "⚙️ Config"]
     else:
         nav_options = ["⚙️ Config"]
     
@@ -841,7 +841,7 @@ def main():
     elif page == "🚀 Manage Versions":
         st.title("🚀 Manage Versions")
         
-        tab_labels = ["🚀 Create Versions", "📦 Release/Archive", "✏️ Rename", "🔍 Update Filters"]
+        tab_labels = ["🚀 Create Versions", "📦 Release/Archive", "✏️ Rename"]
         
         # Initialize active tab if not set
         if "current_tab" not in st.session_state:
@@ -853,7 +853,7 @@ def main():
 
         # Create tabs. Note: st.tabs doesn't support active index, 
         # so this is a standard Streamlit approach.
-        tab_v1, tab_v2, tab_v3, tab_v4 = st.tabs(tab_labels)
+        tab_v1, tab_v2, tab_v3 = st.tabs(tab_labels)
 
         # Tab Logic
         with tab_v1:
@@ -1040,140 +1040,149 @@ def main():
                         st.success(f"🎉 Batch rename complete! ({success_count} actions)")
                         st.session_state.last_rename_mappings = active_renames
                         st.session_state.rename_mappings = [{"old": None, "new": ""}]
-        with tab_v4:
-            st.header("🔍 Batch Update Filter JQL")
-            
-            filter_names_raw = st.text_input("Enter Filter Names (comma separated)", placeholder="Filter Name 1, Filter Name 2", key="filter_names_input")
-            target_names = [n.strip() for n in filter_names_raw.split(",") if n.strip()]
-            
-            selected_filters = []
-            
-            if target_names:
-                if st.button("🔍 Validate and Load Filters", use_container_width=True):
-                    resolved = []
-                    missing = []
-                    with st.spinner("Validating filters..."):
-                        for name in target_names:
-                            f = jira_utils.get_filter_by_name(st.session_state.jira_config, name)
-                            if f:
-                                resolved.append(f)
-                            else:
-                                missing.append(name)
-                    
-                    if missing:
-                        for name in missing:
-                            st.warning(f"Filter '{name}' not found.")
-                    
-                    if resolved:
-                        st.session_state.manual_filters = resolved
-                        if not missing:
-                            st.success("✅ Filters loaded")
+                        
+                        if st.button("🔍 Go to: Update Filters", type="primary", use_container_width=True):
+                            st.session_state.current_page = "🔍 Update Filters"
+                            st.query_params['page'] = "🔍 Update Filters"
+                            st.rerun()
+    elif page == "🔍 Update Filters":
+        st.title("🔍 Batch Update Filter JQL")
+        
+        filter_names_raw = st.text_input("Enter Filter Names (comma separated)", placeholder="Filter Name 1, Filter Name 2", key="filter_names_input")
+        target_names = [n.strip() for n in filter_names_raw.split(",") if n.strip()]
+        
+        selected_filters = []
+        
+        if target_names:
+            if st.button("🔍 Validate and Load Filters", use_container_width=True):
+                resolved = []
+                missing = []
+                with st.spinner("Validating filters..."):
+                    for name in target_names:
+                        f = jira_utils.get_filter_by_name(st.session_state.jira_config, name)
+                        if f:
+                            resolved.append(f)
                         else:
-                            st.info(f"Loaded {len(resolved)} filters ({len(missing)} missing).")
+                            missing.append(name)
+                
+                if missing:
+                    for name in missing:
+                        st.warning(f"Filter '{name}' not found.")
+                
+                if resolved:
+                    st.session_state.manual_filters = resolved
+                    if not missing:
+                        st.success("✅ Filters loaded")
                     else:
-                        st.error("No valid filters were found from the provided names.")
+                        st.info(f"Loaded {len(resolved)} filters ({len(missing)} missing).")
+                else:
+                    st.error("No valid filters were found from the provided names.")
 
-            if "manual_filters" in st.session_state:
-                selected_filters = st.session_state.manual_filters
-                st.write(f"**Loaded filters:** {', '.join([f['name'] for f in selected_filters])}")
+        if "manual_filters" in st.session_state:
+            selected_filters = st.session_state.manual_filters
+            st.write(f"**Loaded filters:** {', '.join([f['name'] for f in selected_filters])}")
 
-            # Replacement Logic
-            if selected_filters:
-                st.divider()
+        # Replacement Logic
+        if selected_filters:
+            st.divider()
 
-                # Initialize mappings in session state
-                if 'filter_mappings' not in st.session_state:
-                    st.session_state.filter_mappings = [{"old": None, "new": None}]
+            # Initialize mappings in session state
+            if 'filter_mappings' not in st.session_state:
+                st.session_state.filter_mappings = [{"old": None, "new": None}]
 
-                # Fetch versions for active workspace to populate dropdowns
-                with st.spinner("Loading versions for active workspace..."):
-                    all_v_names = get_versions_for_projects_cached(username, config_tuple, current_selection_list)
-                # Function to add a row
-                def add_mapping_row():
-                    st.session_state.filter_mappings.append({"old": None, "new": None})
+            # Fetch versions for active workspace to populate dropdowns
+            current_selection_list = sorted(list(st.session_state.selected_projects))
+            config_tuple = (st.session_state.jira_config.get("JIRA_BASE_URL"), st.session_state.jira_config.get("JIRA_EMAIL"), st.session_state.jira_config.get("JIRA_API_TOKEN"))
+            
+            with st.spinner("Loading versions for active workspace..."):
+                all_v_names = get_versions_for_projects_cached(username, config_tuple, current_selection_list)
+            
+            # Function to add a row
+            def add_mapping_row():
+                st.session_state.filter_mappings.append({"old": None, "new": None})
 
-                # Function to remove a row
-                def remove_mapping_row(index):
-                    if len(st.session_state.filter_mappings) > 1:
-                        st.session_state.filter_mappings.pop(index)
+            # Function to remove a row
+            def remove_mapping_row(index):
+                if len(st.session_state.filter_mappings) > 1:
+                    st.session_state.filter_mappings.pop(index)
 
-                # Render Header Row
-                h_col1, h_col2, h_col3 = st.columns([4, 4, 1])
-                h_col1.write("**Old Version name**")
-                h_col2.write("**New Version name**")
+            # Render Header Row
+            h_col1, h_col2, h_col3 = st.columns([4, 4, 1])
+            h_col1.write("**Old Version name**")
+            h_col2.write("**New Version name**")
 
-                # Render mapping rows
-                for i, mapping in enumerate(st.session_state.filter_mappings):
-                    m_col1, m_col2, m_col3 = st.columns([4, 4, 1])
-                    
-                    st.session_state.filter_mappings[i]["old"] = m_col1.text_input(
-                        f"Old Version {i+1}", 
-                        value=mapping["old"] if mapping["old"] else "", 
-                        key=f"old_v_map_{i}", 
-                        placeholder="e.g. 2026Train1",
-                        label_visibility="collapsed"
-                    )
-                    
-                    st.session_state.filter_mappings[i]["new"] = m_col2.selectbox(
-                        f"New Version {i+1}", 
-                        options=all_v_names, 
-                        key=f"new_v_map_{i}", 
-                        index=all_v_names.index(mapping["new"]) if mapping["new"] in all_v_names else None,
-                        placeholder="Select New Version",
-                        label_visibility="collapsed"
-                    )
-                    
-                    if m_col3.button("X", key=f"remove_map_{i}", help="Remove this mapping", use_container_width=True):
-                        remove_mapping_row(i)
-                        st.rerun()
-
-                if st.button("➕ Add Mapping Row", use_container_width=True):
-                    add_mapping_row()
+            # Render mapping rows
+            for i, mapping in enumerate(st.session_state.filter_mappings):
+                m_col1, m_col2, m_col3 = st.columns([4, 4, 1])
+                
+                st.session_state.filter_mappings[i]["old"] = m_col1.text_input(
+                    f"Old Version {i+1}", 
+                    value=mapping["old"] if mapping["old"] else "", 
+                    key=f"old_v_map_{i}", 
+                    placeholder="e.g. 2026Train1",
+                    label_visibility="collapsed"
+                )
+                
+                st.session_state.filter_mappings[i]["new"] = m_col2.selectbox(
+                    f"New Version {i+1}", 
+                    options=all_v_names, 
+                    key=f"new_v_map_{i}", 
+                    index=all_v_names.index(mapping["new"]) if mapping["new"] in all_v_names else None,
+                    placeholder="Select New Version",
+                    label_visibility="collapsed"
+                )
+                
+                if m_col3.button("X", key=f"remove_map_{i}", help="Remove this mapping", use_container_width=True):
+                    remove_mapping_row(i)
                     st.rerun()
 
-                st.divider()
+            if st.button("➕ Add Mapping Row", use_container_width=True):
+                add_mapping_row()
+                st.rerun()
 
-                # Gather and group mappings
-                final_mappings = {} # old -> list of news
-                for m in st.session_state.filter_mappings:
-                    old_v = m.get("old")
-                    new_v = m.get("new")
+            st.divider()
 
-                    if old_v and new_v and str(new_v).strip():
-                        new_v = str(new_v).strip()
-                        if old_v not in final_mappings:
-                            final_mappings[old_v] = []
-                        if new_v not in final_mappings[old_v]:
-                            final_mappings[old_v].append(new_v)
+            # Gather and group mappings
+            final_mappings = {} # old -> list of news
+            for m in st.session_state.filter_mappings:
+                old_v = m.get("old")
+                new_v = m.get("new")
+
+                if old_v and new_v and str(new_v).strip():
+                    new_v = str(new_v).strip()
+                    if old_v not in final_mappings:
+                        final_mappings[old_v] = []
+                    if new_v not in final_mappings[old_v]:
+                        final_mappings[old_v].append(new_v)
 
 
-                if final_mappings:
-                    if st.button("🚀 Update All Loaded Filters", type="primary", use_container_width=True):
-                        for f in selected_filters:
-                            with st.status(f"Processing filter: {f['name']}...", expanded=True) as status:
-                                current_jql = f.get("jql", "")
-                                new_jql = current_jql
+            if final_mappings:
+                if st.button("🚀 Update All Loaded Filters", type="primary", use_container_width=True):
+                    for f in selected_filters:
+                        with st.status(f"Processing filter: {f['name']}...", expanded=True) as status:
+                            current_jql = f.get("jql", "")
+                            new_jql = current_jql
+                            
+                            # Apply all unique old version replacements
+                            for old_v, new_v_list in final_mappings.items():
+                                new_jql = update_jql_version(new_jql, old_v, new_v_list)
+                            
+                            if new_jql == current_jql:
+                                st.info(f"No specified old versions found in JQL for {f['name']}.")
+                            else:
+                                st.write(f"**Original JQL:** `{current_jql}`")
+                                st.write(f"**Updated JQL:** `{new_jql}`")
                                 
-                                # Apply all unique old version replacements
-                                for old_v, new_v_list in final_mappings.items():
-                                    new_jql = update_jql_version(new_jql, old_v, new_v_list)
-                                
-                                if new_jql == current_jql:
-                                    st.info(f"No specified old versions found in JQL for {f['name']}.")
+                                success, err = jira_utils.update_filter_jql(st.session_state.jira_config, f["id"], new_jql)
+                                if success:
+                                    st.success(f"Successfully updated filter: {f['name']}")
+                                    f["jql"] = new_jql
                                 else:
-                                    st.write(f"**Original JQL:** `{current_jql}`")
-                                    st.write(f"**Updated JQL:** `{new_jql}`")
-                                    
-                                    success, err = jira_utils.update_filter_jql(st.session_state.jira_config, f["id"], new_jql)
-                                    if success:
-                                        st.success(f"Successfully updated filter: {f['name']}")
-                                        f["jql"] = new_jql
-                                    else:
-                                        st.error(f"Failed to update filter: {f['name']}\n\n**Error:** {err}")
-                                
-                                status.update(label=f"Finished {f['name']}", state="complete")
-                        
-                        st.success("🎉 Batch filter update completed!")
+                                    st.error(f"Failed to update filter: {f['name']}\n\n**Error:** {err}")
+                            
+                            status.update(label=f"Finished {f['name']}", state="complete")
+                    
+                    st.success("🎉 Batch filter update completed!")
 
 if __name__ == "__main__":
     main()
