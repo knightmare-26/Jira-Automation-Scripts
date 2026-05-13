@@ -258,7 +258,8 @@ def get_filter_by_name(config, filter_name):
     try:
         params = [
             ("filterName", filter_name),
-            ("expand", "jql,editable")
+            ("expand", "jql"),
+            ("expand", "editable")
         ]
         url = clean_url(f"{config['API_BASE']}/filter/search")
         r = requests.get(
